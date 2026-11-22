@@ -1,0 +1,567 @@
+{
+  "_about": "Every service-to-service call in RailShack, taken from the source code. mode: call = synchronous HTTP (the caller waits), fire = fire-and-forget (runs in the background, never fails the request), proxy = request forwarding, sql = PostgreSQL (the source of truth), tcp = Redis (the cache).",
+  "edges": [
+    [
+      "frontend",
+      "api-gateway",
+      "proxy",
+      "ANY",
+      "/api/*",
+      "Browser API calls are forwarded to the gateway"
+    ],
+    [
+      "api-gateway",
+      "rate-limiter",
+      "call",
+      "GET",
+      "/api/rate-limiter/check",
+      "Every request is checked against the per-client limit"
+    ],
+    [
+      "booking",
+      "auth",
+      "call",
+      "GET",
+      "/api/auth/verify",
+      "Verify the login token"
+    ],
+    [
+      "booking",
+      "user-profile",
+      "call",
+      "GET",
+      "/api/user-profile/{user}",
+      "Load the traveller's profile"
+    ],
+    [
+      "booking",
+      "passengers",
+      "call",
+      "POST",
+      "/api/passengers/validate",
+      "Validate passenger names, ages and berths"
+    ],
+    [
+      "booking",
+      "kyc",
+      "call",
+      "GET",
+      "/api/kyc/status/{user}",
+      "Check the user's KYC status"
+    ],
+    [
+      "booking",
+      "tatkal",
+      "call",
+      "GET",
+      "/api/tatkal/check",
+      "Is the Tatkal window open for this date and class?"
+    ],
+    [
+      "booking",
+      "routes",
+      "call",
+      "GET",
+      "/api/routes/{train}",
+      "Load the train's stops"
+    ],
+    [
+      "booking",
+      "trains",
+      "call",
+      "GET",
+      "/api/trains/{train}",
+      "Load the train's details"
+    ],
+    [
+      "booking",
+      "fares",
+      "call",
+      "POST",
+      "/api/fares/quote",
+      "Price the journey"
+    ],
+    [
+      "booking",
+      "offers",
+      "call",
+      "POST",
+      "/api/offers/apply",
+      "Apply a coupon such as BLACKFRIDAY"
+    ],
+    [
+      "booking",
+      "insurance",
+      "call",
+      "GET",
+      "/api/insurance/quote",
+      "Quote travel insurance"
+    ],
+    [
+      "booking",
+      "seat-allocation",
+      "call",
+      "POST",
+      "/api/seat-allocation/allocate",
+      "Allocate berths"
+    ],
+    [
+      "booking",
+      "payment-gateway",
+      "call",
+      "POST",
+      "/api/payment-gateway/charge",
+      "Take the payment"
+    ],
+    [
+      "booking",
+      "pnr",
+      "call",
+      "POST",
+      "/api/pnr/create",
+      "Create the 10-digit PNR"
+    ],
+    [
+      "booking",
+      "invoices",
+      "call",
+      "POST",
+      "/api/invoices/create",
+      "Create the GST invoice"
+    ],
+    [
+      "booking",
+      "ticket-pdf",
+      "call",
+      "POST",
+      "/api/ticket-pdf/render",
+      "Render the e-ticket"
+    ],
+    [
+      "booking",
+      "booking-history",
+      "fire",
+      "POST",
+      "/api/booking-history/add",
+      "Add the trip to My Trips"
+    ],
+    [
+      "booking",
+      "notifications",
+      "fire",
+      "POST",
+      "/api/notifications/send",
+      "Send the booking confirmation"
+    ],
+    [
+      "booking",
+      "scheduler",
+      "fire",
+      "POST",
+      "/api/scheduler/jobs",
+      "Queue chart preparation before departure"
+    ],
+    [
+      "booking",
+      "audit-log",
+      "fire",
+      "POST",
+      "/api/audit-log/record",
+      "Record who booked what"
+    ],
+    [
+      "booking",
+      "analytics",
+      "fire",
+      "POST",
+      "/api/analytics/event",
+      "Count the booking"
+    ],
+    [
+      "seat-allocation",
+      "seat-map",
+      "call",
+      "GET",
+      "/api/seat-map/coach-layout + /availability",
+      "Coach layout and free berths"
+    ],
+    [
+      "seat-allocation",
+      "quota",
+      "call",
+      "GET",
+      "/api/quota/rules",
+      "Quota rules (General, Tatkal, Ladies...)"
+    ],
+    [
+      "seat-allocation",
+      "rac",
+      "call",
+      "POST",
+      "/api/rac/assign",
+      "Assign RAC when berths run out"
+    ],
+    [
+      "seat-allocation",
+      "waitlist",
+      "call",
+      "POST",
+      "/api/waitlist/add",
+      "Waitlist when RAC is full"
+    ],
+    [
+      "payment-gateway",
+      "upi",
+      "call",
+      "POST",
+      "/api/upi/collect",
+      "UPI collect request"
+    ],
+    [
+      "payment-gateway",
+      "wallet",
+      "call",
+      "POST",
+      "/api/wallet/debit",
+      "Debit the RailShack wallet"
+    ],
+    [
+      "payment-gateway",
+      "settlements",
+      "fire",
+      "POST",
+      "/api/settlements/record",
+      "Record the transaction for settlement"
+    ],
+    [
+      "pnr",
+      "chart-preparation",
+      "call",
+      "GET",
+      "/api/chart-preparation/status",
+      "Has the chart been prepared?"
+    ],
+    [
+      "chart-preparation",
+      "schedules",
+      "call",
+      "GET",
+      "/api/schedules/{train}",
+      "Departure time, to know when to prepare the chart"
+    ],
+    [
+      "search",
+      "routes",
+      "call",
+      "GET",
+      "/api/routes/between",
+      "Which trains run between the two stations"
+    ],
+    [
+      "search",
+      "trains",
+      "call",
+      "GET",
+      "/api/trains?numbers=",
+      "Train details (in parallel)"
+    ],
+    [
+      "search",
+      "schedules",
+      "call",
+      "GET",
+      "/api/schedules/runs",
+      "Does it run on that date? (in parallel)"
+    ],
+    [
+      "search",
+      "stations",
+      "call",
+      "GET",
+      "/api/stations?codes=",
+      "Station names (in parallel)"
+    ],
+    [
+      "search",
+      "seat-map",
+      "call",
+      "GET",
+      "/api/seat-map/availability",
+      "Live availability per class"
+    ],
+    [
+      "search",
+      "fares",
+      "call",
+      "POST",
+      "/api/fares/batch",
+      "Fares for every class in one call"
+    ],
+    [
+      "cancellation",
+      "pnr",
+      "call",
+      "GET + POST",
+      "/api/pnr/{pnr} and /api/pnr/{pnr}/cancel",
+      "Load the booking, then mark it cancelled"
+    ],
+    [
+      "cancellation",
+      "refunds",
+      "call",
+      "POST",
+      "/api/refunds/initiate",
+      "Start the refund"
+    ],
+    [
+      "cancellation",
+      "waitlist",
+      "fire",
+      "POST",
+      "/api/waitlist/promote",
+      "Promote waitlisted passengers into the freed berths"
+    ],
+    [
+      "cancellation",
+      "notifications",
+      "fire",
+      "POST",
+      "/api/notifications/send",
+      "Send the cancellation message"
+    ],
+    [
+      "cancellation",
+      "audit-log",
+      "fire",
+      "POST",
+      "/api/audit-log/record",
+      "Record the cancellation"
+    ],
+    [
+      "cancellation",
+      "analytics",
+      "fire",
+      "POST",
+      "/api/analytics/event",
+      "Count the cancellation"
+    ],
+    [
+      "booking-history",
+      "auth",
+      "call",
+      "GET",
+      "/api/auth/verify",
+      "Who is asking? Only your own trips are returned"
+    ],
+    [
+      "cancellation",
+      "auth",
+      "call",
+      "GET",
+      "/api/auth/verify",
+      "Who is asking? Only the person who booked may cancel"
+    ],
+    [
+      "refunds",
+      "payment-gateway",
+      "call",
+      "POST",
+      "/api/payment-gateway/refund",
+      "Refund to card or UPI"
+    ],
+    [
+      "refunds",
+      "wallet",
+      "call",
+      "POST",
+      "/api/wallet/credit",
+      "Refund to the wallet"
+    ],
+    [
+      "notifications",
+      "preferences",
+      "call",
+      "GET",
+      "/api/preferences/{user}",
+      "Which channels does the user want?"
+    ],
+    [
+      "notifications",
+      "email",
+      "call",
+      "POST",
+      "/api/email/send",
+      "Send an email"
+    ],
+    [
+      "notifications",
+      "sms",
+      "call",
+      "POST",
+      "/api/sms/send",
+      "Send an SMS"
+    ],
+    [
+      "live-status",
+      "routes",
+      "call",
+      "GET",
+      "/api/routes/{train}",
+      "Stops and timings"
+    ],
+    [
+      "live-status",
+      "trains",
+      "call",
+      "GET",
+      "/api/trains/{train}",
+      "Train details"
+    ],
+    [
+      "live-status",
+      "platform-info",
+      "call",
+      "GET",
+      "/api/platform-info/{station}",
+      "Platform at the next station"
+    ],
+    [
+      "platform-info",
+      "stations",
+      "call",
+      "GET",
+      "/api/stations/{code}",
+      "Station details"
+    ],
+    [
+      "cab-booking",
+      "stations",
+      "call",
+      "GET",
+      "/api/stations/{code}",
+      "Where to send the cab"
+    ],
+    [
+      "retiring-rooms",
+      "stations",
+      "call",
+      "GET",
+      "/api/stations/{code}",
+      "Which station the rooms are at"
+    ],
+    [
+      "search-indexer",
+      "stations",
+      "call",
+      "GET",
+      "/api/stations",
+      "Build the station autocomplete index"
+    ],
+    [
+      "food-ordering",
+      "pnr",
+      "call",
+      "GET",
+      "/api/pnr/{pnr}",
+      "Deliver food to the right coach and berth"
+    ],
+    [
+      "admin",
+      "api-gateway",
+      "call",
+      "GET",
+      "/api/platform/status",
+      "Health sweep of all 50 services"
+    ],
+    [
+      "admin",
+      "analytics",
+      "call",
+      "GET",
+      "/api/analytics/summary",
+      "Bookings and revenue"
+    ],
+    [
+      "admin",
+      "audit-log",
+      "call",
+      "GET",
+      "/api/audit-log/recent",
+      "Recent actions"
+    ],
+    [
+      "admin",
+      "feedback",
+      "call",
+      "GET",
+      "/api/feedback/summary",
+      "Ratings"
+    ],
+    [
+      "admin",
+      "settlements",
+      "call",
+      "GET",
+      "/api/settlements/summary",
+      "Money settled"
+    ],
+    [
+      "auth",
+      "postgres",
+      "sql",
+      "INSERT / SELECT",
+      "users",
+      "Accounts: name and salted password hash (the permanent record)"
+    ],
+    [
+      "pnr",
+      "postgres",
+      "sql",
+      "INSERT / SELECT / UPDATE",
+      "bookings",
+      "Every booking, keyed by PNR (the permanent record)"
+    ],
+    [
+      "pnr",
+      "redis",
+      "tcp",
+      "GET / SET EX / DEL",
+      "pnr:{pnr}",
+      "Cache: a 10-minute copy of each booking for fast PNR checks"
+    ],
+    [
+      "booking-history",
+      "postgres",
+      "sql",
+      "INSERT / SELECT",
+      "trips",
+      "Each user's trips (the permanent record)"
+    ],
+    [
+      "booking-history",
+      "redis",
+      "tcp",
+      "GET / SET EX / DEL",
+      "trips:{user}",
+      "Cache: a 5-minute copy of each user's My Trips list"
+    ]
+  ],
+  "entry": [
+    "auth",
+    "search",
+    "booking",
+    "pnr",
+    "cancellation",
+    "booking-history",
+    "live-status",
+    "trains",
+    "stations",
+    "search-indexer",
+    "food-ordering",
+    "retiring-rooms",
+    "cab-booking",
+    "tourism",
+    "config",
+    "admin"
+  ]
+}
