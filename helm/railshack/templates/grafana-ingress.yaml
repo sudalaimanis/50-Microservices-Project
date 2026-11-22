@@ -1,0 +1,37 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+{{- /*
+  Grafana on our own domain (grafana.<access.host>), through the SAME Application Load Balancer as the app:
+  the IngressClassParams puts every Ingress of this class in one ALB group. No port-forward needed.
+  Grafana is installed by kube-prometheus-stack in its own namespace, so this Ingress lives there too.
+  Prometheus itself stays private: it has no login. We query it through Grafana.
+*/}}
+{{- if and .Values.grafanaIngress.enabled (eq .Values.access.mode "alb-ingress") .Values.access.host }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: railshack-grafana
+  namespace: {{ .Values.grafanaIngress.namespace }}
+  labels:
+    {{- include "railshack.labels" (dict "name" "grafana" "lang" "infra" "root" $) | nindent 4 }}
+  annotations:
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    {{- if .Values.access.alb.certificateArns }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    {{- end }}
+spec:
+  ingressClassName: {{ .Release.Name }}-alb
+  rules:
+    - host: {{ .Values.grafanaIngress.host | default (printf "grafana.%s" .Values.access.host) }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.grafanaIngress.service }}
+                port: { number: 80 }
+{{- end }}

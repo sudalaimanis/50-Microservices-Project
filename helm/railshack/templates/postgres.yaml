@@ -1,0 +1,116 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# PostgreSQL — the source of truth for accounts (auth), bookings (pnr) and My Trips (booking-history).
+# One StatefulSet pod with its own persistent disk, so data survives pod restarts and redeploys.
+# The password is generated once and kept in the railshack-postgres Secret across upgrades.
+{{- if .Values.postgres.enabled }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace "railshack-postgres" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: railshack-postgres
+  labels:
+    {{- include "railshack.labels" (dict "name" "postgres" "lang" "infra" "root" $) | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  {{- if .Values.postgres.password }}
+  POSTGRES_PASSWORD: {{ .Values.postgres.password | b64enc | quote }}
+  {{- else if $existing }}
+  POSTGRES_PASSWORD: {{ index $existing.data "POSTGRES_PASSWORD" | quote }}
+  {{- else }}
+  POSTGRES_PASSWORD: {{ randAlphaNum 32 | b64enc | quote }}
+  {{- end }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    {{- include "railshack.labels" (dict "name" "postgres" "lang" "infra" "root" $) | nindent 4 }}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "railshack.selector" (dict "name" "postgres" "root" $) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "railshack.labels" (dict "name" "postgres" "lang" "infra" "root" $) | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, fsGroup: 70, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          args: ["-c", "max_connections={{ .Values.postgres.maxConnections }}"]
+          ports: [{ name: postgres, containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_DB, value: {{ .Values.postgres.database | quote }} }
+            - { name: POSTGRES_USER, value: {{ .Values.postgres.user | quote }} }
+            - { name: POSTGRES_PASSWORD, valueFrom: { secretKeyRef: { name: railshack-postgres, key: POSTGRES_PASSWORD } } }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", {{ .Values.postgres.user | quote }}, "-d", {{ .Values.postgres.database | quote }}] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", {{ .Values.postgres.user | quote }}] }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+            - { name: run, mountPath: /var/run/postgresql }
+            - { name: tmp, mountPath: /tmp }
+        {{- if .Values.postgres.metrics.enabled }}
+        # Sidecar: reads PostgreSQL's own statistics (connections, commits, rows, size) and publishes them
+        # on :9187/metrics for Prometheus. It talks to the database over localhost inside the same pod.
+        - name: metrics
+          image: {{ .Values.postgres.metrics.image }}
+          ports: [{ name: metrics, containerPort: 9187 }]
+          env:
+            - { name: PGPASSWORD, valueFrom: { secretKeyRef: { name: railshack-postgres, key: POSTGRES_PASSWORD } } }
+            - { name: DATA_SOURCE_NAME, value: "postgresql://{{ .Values.postgres.user }}:$(PGPASSWORD)@127.0.0.1:5432/{{ .Values.postgres.database }}?sslmode=disable" }
+          readinessProbe: { httpGet: { path: /metrics, port: metrics }, periodSeconds: 15, timeoutSeconds: 5 }
+          resources:
+            {{- toYaml .Values.postgres.metrics.resources | nindent 12 }}
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+        {{- end }}
+      volumes:
+        - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "railshack.selector" (dict "name" "postgres" "root" $) | nindent 10 }}
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.postgres.storage.className }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    {{- include "railshack.labels" (dict "name" "postgres" "lang" "infra" "root" $) | nindent 4 }}
+spec:
+  ports:
+    - { name: postgres, port: 5432, targetPort: postgres }
+    {{- if .Values.postgres.metrics.enabled }}
+    - { name: metrics, port: 9187, targetPort: metrics }
+    {{- end }}
+  selector:
+    {{- include "railshack.selector" (dict "name" "postgres" "root" $) | nindent 4 }}
+{{- end }}

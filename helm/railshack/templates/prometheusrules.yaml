@@ -1,0 +1,109 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# Alert rules for Prometheus (kube-prometheus-stack picks up PrometheusRules from every namespace).
+# Each rule is a PromQL condition that must stay true for "for:" before the alert fires.
+# Firing alerts appear in Grafana (the Command Center's "Firing alerts" table, and Alerting → Alert rules).
+# Every rule carries project="railshack", so our dashboards show only our alerts.
+{{- if .Values.prometheusRules.enabled }}
+{{- $ns := .Release.Namespace }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: railshack-alerts
+  labels:
+    {{- include "railshack.labels" (dict "name" "alerts" "lang" "infra" "root" $) | nindent 4 }}
+spec:
+  groups:
+    - name: railshack.services
+      rules:
+        - alert: RailShackServiceDown
+          expr: max by (job) (up{namespace="{{ $ns }}", job!~"postgres|redis"}) == 0
+          for: 1m
+          labels: { severity: critical, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.job }}`}} is down"
+            description: "Prometheus cannot scrape any pod of {{`{{ $labels.job }}`}} for 1 minute."
+        - alert: RailShackHighErrorRate
+          expr: |
+            sum by (service) (rate(railshack_http_requests_total{namespace="{{ $ns }}", code=~"5.."}[2m]))
+              / sum by (service) (rate(railshack_http_requests_total{namespace="{{ $ns }}"}[2m])) > 0.05
+          for: 2m
+          labels: { severity: critical, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.service }}`}}: {{`{{ $value | humanizePercentage }}`}} of requests fail"
+            description: "More than 5% of requests to {{`{{ $labels.service }}`}} returned 5xx for 2 minutes."
+        - alert: RailShackSlowService
+          expr: |
+            sum by (service) (rate(railshack_http_request_duration_seconds_sum{namespace="{{ $ns }}"}[5m]))
+              / sum by (service) (rate(railshack_http_request_duration_seconds_count{namespace="{{ $ns }}"}[5m])) > 0.5
+          for: 3m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.service }}`}} answers in {{`{{ $value | humanizeDuration }}`}} on average"
+            description: "Average response time of {{`{{ $labels.service }}`}} is above 500 ms for 3 minutes."
+    - name: railshack.data
+      rules:
+        - alert: RailShackPostgresDown
+          expr: pg_up{namespace="{{ $ns }}"} == 0 or absent(pg_up{namespace="{{ $ns }}"})
+          for: 1m
+          labels: { severity: critical, project: railshack }
+          annotations:
+            summary: "PostgreSQL is not answering"
+            description: "Sign-ins, new bookings and My Trips writes fail until PostgreSQL is back."
+        - alert: RailShackPostgresConnectionsHigh
+          expr: sum(pg_stat_database_numbackends{namespace="{{ $ns }}"}) / max(pg_settings_max_connections{namespace="{{ $ns }}"}) > 0.8
+          for: 5m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "PostgreSQL uses {{`{{ $value | humanizePercentage }}`}} of its connections"
+            description: "Above 80% of max_connections for 5 minutes. New connections will soon be refused."
+        - alert: RailShackRedisDown
+          expr: redis_up{namespace="{{ $ns }}"} == 0 or absent(redis_up{namespace="{{ $ns }}"})
+          for: 1m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "Redis is not answering"
+            description: "Nothing is lost: every read falls back to PostgreSQL, so pages get slower."
+        - alert: RailShackCacheHitRatioLow
+          expr: |
+            sum(rate(redis_keyspace_hits_total{namespace="{{ $ns }}"}[10m]))
+              / (sum(rate(redis_keyspace_hits_total{namespace="{{ $ns }}"}[10m])) + sum(rate(redis_keyspace_misses_total{namespace="{{ $ns }}"}[10m]))) < 0.5
+            and sum(rate(redis_keyspace_misses_total{namespace="{{ $ns }}"}[10m])) > 0.1
+          for: 10m
+          labels: { severity: info, project: railshack }
+          annotations:
+            summary: "Cache hit ratio is {{`{{ $value | humanizePercentage }}`}}"
+            description: "Most reads miss Redis and go to PostgreSQL. Normal right after a restart or FLUSHALL."
+    - name: railshack.kubernetes
+      rules:
+        - alert: RailShackPodsPending
+          expr: sum(kube_pod_status_phase{namespace="{{ $ns }}", phase="Pending"}) > 0
+          for: 5m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "{{`{{ $value }}`}} RailShack pods waiting for a node"
+            description: "Pods have been Pending for 5 minutes: check the vCPU quota and kubectl get events."
+        - alert: RailShackPodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ $ns }}"}[10m]) > 3
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.pod }}`}} restarted {{`{{ $value | humanize }}`}} times in 10 minutes"
+            description: "Check kubectl logs --previous for {{`{{ $labels.pod }}`}}."
+        - alert: RailShackDeploymentDegraded
+          expr: kube_deployment_status_replicas_available{namespace="{{ $ns }}"} < kube_deployment_spec_replicas{namespace="{{ $ns }}"}
+          for: 10m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.deployment }}`}} has fewer ready pods than it should"
+            description: "Available replicas stayed below the desired count for 10 minutes."
+        - alert: RailShackAutoscalerMaxedOut
+          expr: |
+            kube_horizontalpodautoscaler_status_current_replicas{namespace="{{ $ns }}"}
+              >= kube_horizontalpodautoscaler_spec_max_replicas{namespace="{{ $ns }}"}
+          for: 5m
+          labels: { severity: warning, project: railshack }
+          annotations:
+            summary: "{{`{{ $labels.horizontalpodautoscaler }}`}} is at its maximum pods"
+            description: "The autoscaler cannot add more pods. Raise maxReplicas or the service is the bottleneck."
+{{- end }}

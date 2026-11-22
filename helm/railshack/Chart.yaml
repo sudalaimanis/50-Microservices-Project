@@ -1,0 +1,20 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+apiVersion: v2
+name: railshack
+description: RailShack — an IRCTC-style train booking platform on 50 microservices, by DevOps Shack
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords: [microservices, kubernetes, devops-shack, railshack]
+home: https://devopsshack.com
+sources:
+  - https://github.com/jaiswaladi246/50-MicroServices-Project-By-DevOpsShack
+annotations:
+  devopsshack.com/project: "RailShack - 50 Microservices Project by DevOps Shack"
+  devopsshack.com/youtube: "https://www.youtube.com/@devopsshack"
+  devopsshack.com/license: "Apache-2.0"
+maintainers:
+  - name: DevOps Shack
+    email: office@devopsshack.com

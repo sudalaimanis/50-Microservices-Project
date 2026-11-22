@@ -1,0 +1,52 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+#
+# Prometheus + Grafana for RailShack, using the community kube-prometheus-stack chart.
+# CD installs it before the app (namespace "monitoring", release "monitoring"):
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack --version 93.4.0 \
+#     -n monitoring --create-namespace -f cluster/monitoring-values.yaml --wait
+#
+# Open Grafana: https://grafana.<APP_DOMAIN>  (user: admin). The RailShack chart adds that Ingress, so Grafana
+# shares the app's Application Load Balancer and HTTPS certificate. The password:
+#   PowerShell:  $b64 = kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-password}'
+#                [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64))
+# Prometheus stays private on purpose (it has no login); we query it from Grafana (Explore).
+# The four RailShack dashboards (folder "RailShack") and the alert rules are loaded automatically from the app's Helm chart.
+
+prometheus:
+  prometheusSpec:
+    # Pick up ServiceMonitors from every namespace and every release (ours lives in "railshack").
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    scrapeInterval: 15s
+    retention: 3d               # a teaching cluster: keep 3 days of metrics
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { memory: 2Gi }
+
+grafana:
+  # No adminPassword here: Grafana generates one and keeps it in the monitoring-grafana Secret.
+  defaultDashboardsTimezone: browser
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard   # the RailShack chart labels its dashboard ConfigMaps with this
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder   # ...and puts them in the folder this annotation names
+      provider:
+        foldersFromFilesStructure: true
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+# kube-state-metrics: also publish these node labels, so the Kubernetes dashboard can split nodes
+# by NodePool, Spot / On-Demand, instance type and availability zone.
+kube-state-metrics:
+  metricLabelsAllowlist:
+    - nodes=[karpenter.sh/nodepool,karpenter.sh/capacity-type,node.kubernetes.io/instance-type,topology.kubernetes.io/zone,kubernetes.io/arch]
+
+alertmanager:
+  enabled: false                # not needed for the sessions; turn on to add alert routing

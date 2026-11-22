@@ -1,0 +1,20 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+{{- range $name, $svc := .Values.services }}
+{{- $cfg := include "railshack.cfg" (dict "root" $ "svc" $svc) | fromYaml }}
+{{- if $cfg.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "railshack.labels" (dict "name" $name "lang" $cfg.lang "root" $) | nindent 4 }}
+spec:
+  minAvailable: {{ $cfg.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "railshack.selector" (dict "name" $name "root" $) | nindent 6 }}
+{{- end }}
+{{- end }}

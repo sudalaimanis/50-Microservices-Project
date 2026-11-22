@@ -1,0 +1,82 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# Black Friday sale: layer this ON TOP of values-eks.yaml.
+#   helm upgrade --install railshack helm/railshack -n railshack \
+#     -f helm/railshack/values-eks.yaml -f helm/railshack/values-blackfriday.yaml --set image.repository=<github-user>
+#
+# The hot path (frontend → gateway → search → seat-map/fares → booking) gets real CPU
+# requests, simulated business logic (workFactor) and aggressive HPAs. When the load test
+# starts, HPAs add pods, pods go Pending, and EKS Auto Mode (Karpenter) adds nodes.
+app:
+  saleBanner: "BLACK FRIDAY ON RAILSHACK · Use code BLACKFRIDAY for 20% off · Powered by 50 microservices on EKS"
+  rateLimitPerSecond: 100000
+
+# More room for the database during the sale (bookings are written here).
+postgres:
+  maxConnections: 300
+  resources: { requests: { cpu: "1", memory: 1Gi }, limits: { memory: 2Gi } }
+
+services:
+  frontend:
+    lang: node
+    resources: { requests: { cpu: 250m, memory: 96Mi }, limits: { memory: 256Mi } }
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 40, targetCPU: 50 }
+  api-gateway:
+    lang: go
+    resources: { requests: { cpu: 250m, memory: 48Mi }, limits: { memory: 128Mi } }
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 60, targetCPU: 50 }
+  rate-limiter:
+    lang: go
+    resources: { requests: { cpu: 200m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  search:
+    lang: go
+    workFactor: 25
+    resources: { requests: { cpu: 500m, memory: 48Mi }, limits: { memory: 128Mi } }
+    autoscaling: { enabled: true, minReplicas: 3, maxReplicas: 80, targetCPU: 50 }
+  seat-map:
+    lang: go
+    workFactor: 10
+    resources: { requests: { cpu: 250m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 60, targetCPU: 50 }
+  fares:
+    lang: java
+    workFactor: 15
+    resources: { requests: { cpu: 500m, memory: 192Mi }, limits: { memory: 384Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 40, targetCPU: 50 }
+  routes:
+    lang: go
+    resources: { requests: { cpu: 200m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  trains:
+    lang: go
+    resources: { requests: { cpu: 200m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  schedules:
+    lang: java
+    resources: { requests: { cpu: 300m, memory: 160Mi }, limits: { memory: 320Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  stations:
+    lang: go
+    resources: { requests: { cpu: 200m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  booking:
+    lang: go
+    workFactor: 20
+    resources: { requests: { cpu: 500m, memory: 48Mi }, limits: { memory: 128Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 40, targetCPU: 50 }
+  seat-allocation:
+    lang: go
+    workFactor: 8
+    resources: { requests: { cpu: 250m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  payment-gateway:
+    lang: go
+    workFactor: 5
+    resources: { requests: { cpu: 250m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 30, targetCPU: 50 }
+  search-indexer:
+    lang: go
+    resources: { requests: { cpu: 200m, memory: 32Mi }, limits: { memory: 96Mi } }
+    autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 20, targetCPU: 50 }

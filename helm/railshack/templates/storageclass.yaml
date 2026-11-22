@@ -1,0 +1,22 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# EKS Auto Mode does not create a default StorageClass. This one gives PostgreSQL an encrypted gp3
+# EBS volume, provisioned by Auto Mode's built-in EBS driver — nothing to install.
+{{- if and .Values.postgres.enabled .Values.postgres.storage.createEBSClass }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.postgres.storage.className }}
+  labels:
+    {{- include "railshack.labels" (dict "name" "postgres" "lang" "infra" "root" $) | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+provisioner: ebs.csi.eks.amazonaws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  encrypted: "true"
+{{- end }}

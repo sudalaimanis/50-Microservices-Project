@@ -1,0 +1,2123 @@
+{
+ "uid": "railshack-data",
+ "title": "RailShack · Data layer (PostgreSQL + Redis)",
+ "description": "PostgreSQL remembers, Redis remembers fast. Live numbers from postgres_exporter and redis_exporter.",
+ "tags": [
+  "railshack",
+  "devops-shack",
+  "data"
+ ],
+ "editable": true,
+ "graphTooltip": 1,
+ "refresh": "10s",
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-30m",
+  "to": "now"
+ },
+ "timezone": "browser",
+ "timepicker": {
+  "refresh_intervals": [
+   "5s",
+   "10s",
+   "30s",
+   "1m",
+   "5m"
+  ]
+ },
+ "links": [
+  {
+   "title": "RailShack dashboards",
+   "type": "dashboards",
+   "tags": [
+    "railshack"
+   ],
+   "asDropdown": true,
+   "includeVars": true,
+   "keepTime": true,
+   "icon": "external link"
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "datasource",
+    "label": "Data source",
+    "type": "datasource",
+    "query": "prometheus",
+    "current": {},
+    "hide": 0
+   },
+   {
+    "name": "namespace",
+    "label": "Namespace",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${datasource}"
+    },
+    "query": {
+     "query": "label_values(railshack_up, namespace)",
+     "refId": "ns"
+    },
+    "definition": "label_values(railshack_up, namespace)",
+    "refresh": 2,
+    "current": {
+     "text": "railshack",
+     "value": "railshack"
+    },
+    "hide": 0
+   }
+  ]
+ },
+ "annotations": {
+  "list": [
+   {
+    "builtIn": 1,
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "hide": true,
+    "iconColor": "rgba(0, 211, 255, 1)",
+    "name": "Annotations & Alerts",
+    "type": "dashboard"
+   }
+  ]
+ },
+ "panels": [
+  {
+   "type": "text",
+   "title": "",
+   "transparent": true,
+   "options": {
+    "mode": "html",
+    "content": "<div style=\"display:flex;align-items:center;gap:16px;padding:6px 4px\"><div style=\"font-size:26px;font-weight:700;color:#2563EB\">🚆 Data layer</div><div style=\"opacity:.75;font-size:14px\">PostgreSQL is the truth · Redis is the fast copy · read Redis first, write PostgreSQL first</div><div style=\"margin-left:auto;font-size:12px;opacity:.6\">RailShack · a DevOps Shack project · devopsshack.com</div></div>"
+   },
+   "gridPos": {
+    "h": 2,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "id": 1,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "The cache: Redis",
+   "collapsed": false,
+   "id": 2,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 2
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Redis",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(redis_up{namespace=\"$namespace\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#16A34A",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "#DC2626"
+        },
+        "1": {
+         "text": "UP",
+         "color": "#16A34A"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 0,
+    "y": 3
+   },
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Hit ratio",
+   "description": "Of all cache lookups, the share Redis answered. Each hit is one PostgreSQL query saved.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[$__rate_interval])) / clamp_min(sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[$__rate_interval])) + sum(rate(redis_keyspace_misses_total{namespace=\"$namespace\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.5
+       },
+       {
+        "color": "#16A34A",
+        "value": 0.8
+       }
+      ]
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 3,
+    "y": 3
+   },
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Keys",
+   "description": "pnr:<PNR> (10 min) and trips:<user> (5 min) copies.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(redis_db_keys{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#7C3AED"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 7,
+    "y": 3
+   },
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Memory used",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(redis_memory_used_bytes{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 10,
+    "y": 3
+   },
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Memory limit",
+   "description": "maxmemory 96mb: when full, Redis drops the least recently used keys (allkeys-lru).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(redis_memory_max_bytes{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 13,
+    "y": 3
+   },
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Commands / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_commands_processed_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#2563EB"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 3
+   },
+   "id": 8,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Clients",
+   "description": "Connections from pnr and booking-history pods (and the exporter).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(redis_connected_clients{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 3
+   },
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Hits vs misses / second",
+   "description": "After FLUSHALL, misses jump and hits drop to zero; then the cache refills itself and hits come back.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "hits (served from Redis)"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(redis_keyspace_misses_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "misses (went to PostgreSQL)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 35,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "hits (served from Redis)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "misses (went to PostgreSQL)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#EA580C"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 7
+   },
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Hit ratio over time",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[$__rate_interval])) / clamp_min(sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[$__rate_interval])) + sum(rate(redis_keyspace_misses_total{namespace=\"$namespace\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "hit ratio"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "thresholdsStyle": {
+       "mode": "line+area"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.5
+       },
+       {
+        "color": "#16A34A",
+        "value": 0.8
+       }
+      ]
+     },
+     "max": 1
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "hit ratio"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 7
+   },
+   "id": 11,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Keys in the cache",
+   "description": "Every key has an expiry (TTL). Equal lines prove nothing is cached forever.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(redis_db_keys{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "keys"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(redis_db_keys_expiring{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "keys with expiry"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "keys"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7C3AED"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "keys with expiry"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#2563EB"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 15
+   },
+   "id": 12,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Expired and evicted keys / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_expired_keys_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "expired (TTL ran out)"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(redis_evicted_keys_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "evicted (memory full)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "expired (TTL ran out)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#2563EB"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "evicted (memory full)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 15
+   },
+   "id": 13,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Commands by type / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(6, sum by (cmd) (rate(redis_commands_total{namespace=\"$namespace\"}[$__rate_interval])))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{cmd}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 15
+   },
+   "id": 14,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "The truth: PostgreSQL",
+   "collapsed": false,
+   "id": 15,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 23
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "PostgreSQL",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(pg_up{namespace=\"$namespace\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#16A34A",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "#DC2626"
+        },
+        "1": {
+         "text": "UP",
+         "color": "#16A34A"
+        }
+       }
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 0,
+    "y": 24
+   },
+   "id": 16,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Connections",
+   "description": "Open connections vs max_connections (200, or 300 on Black Friday).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(pg_stat_database_numbackends{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "used"
+    },
+    {
+     "refId": "B",
+     "expr": "max(pg_settings_max_connections{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "max"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value_and_name",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 3,
+    "y": 24
+   },
+   "id": 17,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Database size",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(pg_database_size_bytes{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 7,
+    "y": 24
+   },
+   "id": 18,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Transactions / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pg_stat_database_xact_commit{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#2563EB"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 10,
+    "y": 24
+   },
+   "id": 19,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Buffer cache hit",
+   "description": "PostgreSQL's own memory cache: share of data blocks found in RAM instead of read from the EBS disk.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pg_stat_database_blks_hit{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval])) / clamp_min(sum(rate(pg_stat_database_blks_hit{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval])) + sum(rate(pg_stat_database_blks_read{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.9
+       },
+       {
+        "color": "#16A34A",
+        "value": 0.99
+       }
+      ]
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 14,
+    "y": 24
+   },
+   "id": 20,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Disk used",
+   "description": "How full the 10 GiB EBS volume behind data-postgres-0 is.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(kubelet_volume_stats_used_bytes{namespace=\"$namespace\",persistentvolumeclaim=\"data-postgres-0\"}) / max(kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\",persistentvolumeclaim=\"data-postgres-0\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.7
+       },
+       {
+        "color": "#DC2626",
+        "value": 0.9
+       }
+      ]
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 18,
+    "y": 24
+   },
+   "id": 21,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Deadlocks",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(pg_stat_database_deadlocks{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#DC2626",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 21,
+    "y": 24
+   },
+   "id": 22,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Rows written / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pg_stat_database_tup_inserted{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "inserted (sign-ups, bookings, trips)"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(pg_stat_database_tup_updated{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "updated (cancellations)"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(rate(pg_stat_database_tup_deleted{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "deleted"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "inserted (sign-ups, bookings, trips)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "updated (cancellations)"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#EA580C"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "deleted"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 28
+   },
+   "id": 23,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Rows read / second",
+   "description": "Reads that reach PostgreSQL. With a warm cache this stays low; after FLUSHALL it jumps.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pg_stat_database_tup_fetched{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "fetched"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(pg_stat_database_tup_returned{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "scanned"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "fetched"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#2563EB"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "scanned"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7C3AED"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 28
+   },
+   "id": 24,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Transactions / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pg_stat_database_xact_commit{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "commits"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(pg_stat_database_xact_rollback{namespace=\"$namespace\",datname=\"railshack\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "rollbacks"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ops",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "commits"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "rollbacks"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 36
+   },
+   "id": 25,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Connections by state",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (state) (pg_stat_activity_count{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{state}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 30,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 36
+   },
+   "id": 26,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Database size",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(pg_database_size_bytes{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "railshack"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "railshack"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#0B2545"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 36
+   },
+   "id": 27,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "The three services that keep data",
+   "collapsed": false,
+   "id": 28,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 44
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Requests / second",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"auth|pnr|booking-history\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 45
+   },
+   "id": 29,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Avg response time",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (service) (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"auth|pnr|booking-history\"}[$__rate_interval])) / clamp_min(sum by (service) (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"auth|pnr|booking-history\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 45
+   },
+   "id": 30,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Errors / second (5xx)",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"auth|pnr|booking-history\",code=~\"5..\"}[$__rate_interval])) > 0",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 45
+   },
+   "id": 31,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  }
+ ]
+}

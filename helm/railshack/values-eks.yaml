@@ -1,0 +1,35 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# AWS EKS (Auto Mode). Users come in through an Application Load Balancer created from an Ingress.
+app:
+  environment: production
+  clusterName: aws-eks-mumbai
+defaults:
+  replicas: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
+access:
+  mode: alb-ingress           # domain + HTTPS certificate come from CD (GitHub variables APP_DOMAIN, ACM_CERT_ARN)
+
+# PostgreSQL gets an encrypted gp3 EBS volume through EKS Auto Mode's built-in EBS driver.
+postgres:
+  storage:
+    className: railshack-ebs
+    createEBSClass: true
+  metrics:
+    enabled: true             # postgres_exporter sidecar
+redis:
+  metrics:
+    enabled: true             # redis_exporter sidecar
+
+# Metrics: CD installs Prometheus + Grafana (cluster/monitoring-values.yaml) before the app.
+serviceMonitor:
+  enabled: true
+grafanaDashboard:
+  enabled: true
+prometheusRules:
+  enabled: true
+grafanaIngress:
+  enabled: true               # https://grafana.<our domain> on the same ALB (only when a domain is set)

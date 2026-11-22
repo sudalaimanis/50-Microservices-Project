@@ -1,0 +1,123 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+{{- range $name, $svc := .Values.services }}
+{{- $cfg := include "railshack.cfg" (dict "root" $ "svc" $svc) | fromYaml }}
+{{- $lang := get $.Values.languageDefaults $cfg.lang | default dict }}
+{{- $res := $cfg.resources | default $lang.resources }}
+{{- $tag := $cfg.tag | default $.Values.image.tag }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  annotations:
+    devopsshack.com/project: "RailShack - 50 Microservices Project by DevOps Shack"
+    devopsshack.com/source: "https://github.com/jaiswaladi246/50-MicroServices-Project-By-DevOpsShack"
+  labels:
+    {{- include "railshack.labels" (dict "name" $name "lang" $cfg.lang "root" $) | nindent 4 }}
+spec:
+  {{- if not $cfg.autoscaling.enabled }}
+  replicas: {{ $cfg.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      {{- include "railshack.selector" (dict "name" $name "root" $) | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 25%, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels:
+        {{- include "railshack.labels" (dict "name" $name "lang" $cfg.lang "root" $) | nindent 8 }}
+      {{- with $cfg.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "railshack.selector" (dict "name" $name "root" $) | nindent 14 }}
+      {{- with $cfg.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.image.registry }}/{{ $.Values.image.repository }}/railshack-{{ $name }}:{{ $tag }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: 8080, protocol: TCP }
+          env:
+            - { name: PORT, value: "8080" }
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - { name: SERVICE_VERSION, value: {{ $tag | quote }} }
+            - { name: WORK_FACTOR, value: {{ $cfg.workFactor | quote }} }
+            - { name: APP_ENV, value: {{ $.Values.app.environment | quote }} }
+            - { name: CLUSTER_NAME, value: {{ $.Values.app.clusterName | quote }} }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            {{- if and $.Values.postgres.enabled (has $name (list "auth" "pnr" "booking-history")) }}
+            - { name: PGPASSWORD, valueFrom: { secretKeyRef: { name: railshack-postgres, key: POSTGRES_PASSWORD } } }
+            - { name: DATABASE_URL, value: "postgres://{{ $.Values.postgres.user }}:$(PGPASSWORD)@postgres:5432/{{ $.Values.postgres.database }}" }
+            {{- end }}
+            {{- if and $.Values.redis.enabled (has $name (list "pnr" "booking-history")) }}
+            - { name: REDIS_ADDR, value: "redis:6379" }
+            {{- end }}
+            {{- if eq $name "auth" }}
+            - { name: AUTH_SECRET, valueFrom: { secretKeyRef: { name: railshack-auth, key: AUTH_SECRET } } }
+            {{- end }}
+            {{- if eq $name "config" }}
+            - { name: SALE_BANNER, value: {{ $.Values.app.saleBanner | quote }} }
+            {{- end }}
+            {{- if eq $name "rate-limiter" }}
+            - { name: RATE_LIMIT_RPS, value: {{ $.Values.app.rateLimitPerSecond | quote }} }
+            {{- end }}
+            {{- if eq $name "tatkal" }}
+            - { name: TATKAL_ALWAYS_OPEN, value: {{ $.Values.app.tatkalAlwaysOpen | quote }} }
+            {{- end }}
+            {{- range $k, $v := $cfg.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+          {{- if eq $cfg.lang "java" }}
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          {{- end }}
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml $res | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+{{- end }}

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  RailShack · 50 Microservices Project by DevOps Shack
+  Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+  SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+-->
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RailShack · 50 Microservices · DevOps Shack</title>
+  <meta name="description" content="An IRCTC-style train booking platform built on 50 microservices by DevOps Shack." />
+  <meta name="author" content="DevOps Shack · Aditya Jaiswal" />
+  <meta name="generator" content="RailShack by DevOps Shack (devopsshack.com)" />
+  <meta property="og:title" content="RailShack · 50 Microservices Project by DevOps Shack" />
+  <meta property="og:site_name" content="DevOps Shack" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2305060a'/%3E%3Cpath d='M14 40h36M20 40l4-16h16l4 16' stroke='%2300ffa3' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/app.css" />
+  <script>try { if (localStorage.getItem('rs_theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}</script>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow g1" aria-hidden="true"></div>
+  <div class="bg-glow g2" aria-hidden="true"></div>
+
+  <div id="sale" class="sale hidden"><div class="sale-track"><span id="saleText"></span></div></div>
+
+  <header class="nav">
+    <a class="brand" href="#search" data-view="search">
+      <span class="brand-mark">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34h32M14 34l4-16h12l4 16M18 26h12" /><circle cx="17" cy="39" r="2.5" /><circle cx="31" cy="39" r="2.5" /></svg>
+      </span>
+      <span class="brand-text"><b>Rail</b>Shack<small>by DevOps Shack</small></span>
+    </a>
+    <nav class="links">
+      <a href="#search" data-view="search" class="active">Book</a>
+      <a href="#trips" data-view="trips">My Trips</a>
+      <a href="#pnr" data-view="pnr">PNR Status</a>
+      <a href="#live" data-view="live">Live Train</a>
+      <a href="#extras" data-view="extras">Extras</a>
+      <a href="#mesh" data-view="mesh">Mesh</a>
+      <a href="#admin" data-view="admin">Ops</a>
+    </nav>
+    <div class="nav-right">
+      <button class="health" id="healthBadge" data-view="mesh" title="Live health of all 50 microservices">
+        <span class="pulse"></span><span id="healthText">checking…</span>
+      </button>
+      <button class="theme" id="themeToggle" title="Switch light / dark theme">☾</button>
+      <button class="user" id="userChip">Sign in</button>
+      <button class="signout hidden" id="signOut" title="Sign out">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= BOOK ================= -->
+    <section class="view active" id="view-search">
+      <div class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow"><i></i> Production-grade · Kubernetes · Helm · GitHub Actions</span>
+          <h1>Book a train.<br /><span class="grad">Watch 50 microservices</span><br />do the work.</h1>
+          <p class="lead">RailShack is an IRCTC-style booking platform built by <a class="inline-brand" href="https://devopsshack.com" target="_blank" rel="noopener">DevOps Shack</a> on <b>50 microservices</b> in Go, Node.js, Python and Java. Every search and every booking lights up the services it touches, live.</p>
+          <div class="stats">
+            <div><b data-count="50">0</b><span>microservices</span></div>
+            <div><b data-count="4">0</b><span>languages</span></div>
+            <div><b data-count="18">0</b><span>trains</span></div>
+            <div><b data-count="1">0</b><span>Helm chart</span></div>
+          </div>
+        </div>
+        <div class="scene" aria-hidden="true">
+          <div class="sun"></div>
+          <svg class="skyline" viewBox="0 0 600 160" preserveAspectRatio="none">
+            <path d="M0 160V96h30V70h22v26h18V50h26v46h20V80h30v80zM176 160V60h18V30h24v30h16v100zM250 160V88h40V56h12v32h30v72zM340 160V40l20-20 20 20v120zM400 160V76h26V58h30v18h24v84zM490 160V92h22V66h34v26h20v68zM570 160V84h30v76z" />
+          </svg>
+          <div class="track"><div class="sleepers"></div></div>
+          <div class="train">
+            <svg viewBox="0 0 420 70">
+              <defs>
+                <linearGradient id="tg" x1="0" x2="1"><stop offset="0" stop-color="#0d1120" /><stop offset="1" stop-color="#182038" /></linearGradient>
+              </defs>
+              <path class="loco" d="M40 18h86c22 0 42 8 54 24l8 10H40z" fill="url(#tg)" />
+              <rect x="196" y="18" width="104" height="34" rx="6" fill="url(#tg)" />
+              <rect x="306" y="18" width="104" height="34" rx="6" fill="url(#tg)" />
+              <path d="M40 40h148" class="stripe" />
+              <path d="M196 40h104M306 40h104" class="stripe" />
+              <g class="windows">
+                <rect x="60" y="24" width="18" height="10" rx="2" /><rect x="84" y="24" width="18" height="10" rx="2" /><rect x="108" y="24" width="18" height="10" rx="2" />
+                <rect x="206" y="24" width="18" height="10" rx="2" /><rect x="230" y="24" width="18" height="10" rx="2" /><rect x="254" y="24" width="18" height="10" rx="2" /><rect x="278" y="24" width="14" height="10" rx="2" />
+                <rect x="316" y="24" width="18" height="10" rx="2" /><rect x="340" y="24" width="18" height="10" rx="2" /><rect x="364" y="24" width="18" height="10" rx="2" /><rect x="388" y="24" width="14" height="10" rx="2" />
+              </g>
+              <circle class="lamp" cx="178" cy="44" r="3" />
+              <g class="wheels"><circle cx="70" cy="56" r="6" /><circle cx="150" cy="56" r="6" /><circle cx="220" cy="56" r="6" /><circle cx="280" cy="56" r="6" /><circle cx="330" cy="56" r="6" /><circle cx="390" cy="56" r="6" /></g>
+            </svg>
+            <div class="beam"></div>
+          </div>
+          <div class="speedlines"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+
+      <form class="search-card glass" id="searchForm" autocomplete="off">
+        <div class="field station">
+          <label>From</label>
+          <input id="from" placeholder="New Delhi (NDLS)" required />
+          <div class="suggest" id="fromSuggest"></div>
+        </div>
+        <button type="button" class="swap" id="swap" title="Swap stations">⇄</button>
+        <div class="field station">
+          <label>To</label>
+          <input id="to" placeholder="Varanasi (BSB)" required />
+          <div class="suggest" id="toSuggest"></div>
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="date" required /></div>
+        <div class="field">
+          <label>Quota</label>
+          <div class="seg" id="quotaSeg"><button type="button" data-q="GN" class="on">General</button><button type="button" data-q="TQ">Tatkal</button></div>
+        </div>
+        <button class="btn primary big" type="submit"><span>Search trains</span><i class="shine"></i></button>
+        <div class="quick">Try:
+          <button type="button" data-route="NDLS,BSB">Delhi → Varanasi</button>
+          <button type="button" data-route="BCT,NDLS">Mumbai → Delhi</button>
+          <button type="button" data-route="HWH,NDLS">Howrah → Delhi</button>
+          <button type="button" data-route="NDLS,JP">Delhi → Jaipur</button>
+        </div>
+      </form>
+
+      <div id="results" class="results"></div>
+    </section>
+
+    <!-- ================= TRIPS ================= -->
+    <section class="view" id="view-trips">
+      <div class="section-head"><h2>My Trips</h2><p>Served by <code>booking-history</code>: saved in PostgreSQL, with a copy in the Redis cache for speed. <span id="tripsServed"></span></p></div>
+      <div id="tripsList" class="cards"></div>
+    </section>
+
+    <!-- ================= PNR ================= -->
+    <section class="view" id="view-pnr">
+      <div class="section-head"><h2>PNR Status</h2><p><code>pnr</code> → <code>chart-preparation</code> → <code>schedules</code></p></div>
+      <form class="inline-form glass" id="pnrForm"><input id="pnrInput" placeholder="Enter 10-digit PNR" maxlength="10" required /><button class="btn primary">Check status</button></form>
+      <div id="pnrResult"></div>
+    </section>
+
+    <!-- ================= LIVE ================= -->
+    <section class="view" id="view-live">
+      <div class="section-head"><h2>Live Train Status</h2><p><code>live-status</code> → <code>routes</code> · <code>trains</code> · <code>platform-info</code></p></div>
+      <form class="inline-form glass" id="liveForm">
+        <select id="liveTrain"></select><button class="btn primary">Track</button>
+      </form>
+      <div id="liveResult"></div>
+    </section>
+
+    <!-- ================= EXTRAS ================= -->
+    <section class="view" id="view-extras">
+      <div class="section-head"><h2>Travel Extras</h2><p>Food, rooms, holidays and cabs — four more microservices.</p></div>
+      <div class="tabs" id="extraTabs">
+        <button data-x="food" class="on">🍛 Food on train</button><button data-x="rooms">🛏 Retiring rooms</button>
+        <button data-x="tourism">🏯 Holidays</button><button data-x="cab">🚕 Cabs</button>
+      </div>
+      <div class="inline-form glass"><select id="extraStation"></select></div>
+      <div id="extraResult" class="cards"></div>
+    </section>
+
+    <!-- ================= MESH ================= -->
+    <section class="view" id="view-mesh">
+      <div class="section-head">
+        <h2>Live Microservice Mesh</h2>
+        <p>Every tile is a real Kubernetes Deployment. Tiles glow when healthy and flash when a request passes through them.</p>
+      </div>
+      <div class="legend">
+        <span><i class="lang go"></i>Go</span><span><i class="lang node"></i>Node.js</span><span><i class="lang python"></i>Python</span><span><i class="lang java"></i>Java</span>
+        <span class="sep"></span><span id="meshSummary"></span>
+      </div>
+      <div id="mesh" class="mesh"></div>
+    </section>
+
+    <!-- ================= ADMIN ================= -->
+    <section class="view" id="view-admin">
+      <div class="section-head"><h2>Ops Dashboard</h2><p><code>admin</code> aggregates <code>analytics</code>, <code>audit-log</code>, <code>settlements</code>, <code>feedback</code> and the gateway health sweep.</p></div>
+      <div id="adminKpis" class="kpis"></div>
+      <div class="two">
+        <div class="glass panel"><h3>Recent audit trail</h3><div id="adminAudit"></div></div>
+        <div class="glass panel"><h3>Bookings by class</h3><div id="adminClasses"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- trace dock: shows which services the last request touched -->
+  <aside class="trace-dock" id="traceDock">
+    <div class="trace-head"><span class="dot"></span><b id="traceTitle">Request trace</b><span id="traceCount"></span><button id="traceClose">×</button></div>
+    <div class="trace-chips" id="traceChips"></div>
+    <div class="mini-mesh" id="miniMesh"></div>
+  </aside>
+
+  <!-- booking drawer -->
+  <div class="drawer-wrap" id="drawer">
+    <div class="drawer glass">
+      <button class="close" id="drawerClose">×</button>
+      <div id="drawerBody"></div>
+    </div>
+  </div>
+
+  <!-- login modal -->
+  <div class="modal-wrap" id="loginModal">
+    <form class="modal glass auth" id="loginForm" novalidate>
+      <button type="button" class="close" id="loginClose" title="Close">×</button>
+      <div class="auth-brand"><span class="auth-logo">🚆</span><div><b>RailShack</b><small>by DevOps Shack</small></div></div>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="on" data-mode="login" role="tab">Sign in</button>
+        <button type="button" data-mode="signup" role="tab">Create account</button>
+      </div>
+      <p class="auth-reason hidden" id="loginReason"></p>
+      <label class="auth-field signup-only hidden"><span>Full name</span><input id="loginName" autocomplete="name" placeholder="Aditya Jaiswal" /></label>
+      <label class="auth-field"><span>Username</span><input id="loginUser" autocomplete="username" placeholder="e.g. aditya" required /></label>
+      <label class="auth-field"><span>Password</span><input id="loginPass" type="password" autocomplete="current-password" placeholder="at least 6 characters" required /></label>
+      <p class="auth-error hidden" id="loginError"></p>
+      <button class="btn primary" id="loginSubmit">Sign in</button>
+      <p class="auth-hint login-only">New here? <a href="#" data-switch="signup">Create an account</a> · Demo: <code>devopsshack</code> / <code>devopsshack</code></p>
+      <p class="auth-hint signup-only hidden">Already have an account? <a href="#" data-switch="login">Sign in</a></p>
+      <p class="auth-note">Search, live status and PNR are open to everyone. Booking, My Trips and cancelling need an account. Passwords are stored only as a salted hash by the <code>auth</code> service.</p>
+    </form>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <canvas id="confetti"></canvas>
+
+  <footer class="foot">
+    <div class="foot-brand">
+      <span class="brand-mark sm"><svg viewBox="0 0 48 48"><path d="M8 34h32M14 34l4-16h12l4 16M18 26h12" /></svg></span>
+      <div><b>DevOps Shack</b><small>Learn DevOps the way companies run it · devopsshack.com</small></div>
+    </div>
+    <div class="foot-pipeline">
+      <span>git push</span><i>→</i><span>GitHub Actions</span><i>→</i><span>GHCR</span><i>→</i><span>Helm</span><i>→</i><span>Kubernetes</span>
+    </div>
+    <div class="foot-links">
+      <a class="yt" href="https://www.youtube.com/@devopsshack" target="_blank" rel="noopener">▶ Watch on YouTube</a>
+      <a href="https://devopsshack.com" target="_blank" rel="noopener">devopsshack.com</a>
+      <a href="https://github.com/jaiswaladi246/50-MicroServices-Project-By-DevOpsShack" target="_blank" rel="noopener">Source</a>
+    </div>
+    <div class="foot-meta"><span id="runtimeMeta">cluster: —</span><br/>© 2026 DevOps Shack · RailShack is a DevOps Shack project · Apache-2.0</div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

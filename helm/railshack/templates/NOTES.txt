@@ -1,0 +1,31 @@
+🚆 RailShack is deploying: {{ len .Values.services }} microservices{{ if .Values.postgres.enabled }} + PostgreSQL{{ end }}{{ if .Values.redis.enabled }} + Redis cache{{ end }} in namespace {{ .Release.Namespace }}.
+{{- if .Values.postgres.enabled }}
+
+PostgreSQL keeps its data on a persistent volume (PVC data-postgres-0). It survives pod restarts,
+upgrades and even `helm uninstall`. To delete the data for good: kubectl delete pvc data-postgres-0 -n {{ .Release.Namespace }}
+{{- end }}
+
+Watch them come up:
+  kubectl get pods -n {{ .Release.Namespace }} -w
+
+{{- if eq .Values.access.mode "alb-ingress" }}
+{{- if .Values.access.host }}
+RailShack: {{ if .Values.access.alb.certificateArns }}https{{ else }}http{{ end }}://{{ .Values.access.host }}
+{{- if .Values.grafanaIngress.enabled }}
+Grafana:   {{ if .Values.access.alb.certificateArns }}https{{ else }}http{{ end }}://{{ .Values.grafanaIngress.host | default (printf "grafana.%s" .Values.access.host) }}   (user admin)
+{{- end }}
+Point both DNS names at the load balancer (one time; it takes 2-4 minutes to appear on first install):
+{{- else }}
+Get the public URL from the ALB (takes 2-4 minutes on first install):
+{{- end }}
+  kubectl get ingress railshack -n {{ .Release.Namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{"\n"}'
+{{- else if eq .Values.access.mode "loadbalancer" }}
+Get the public URL from the LoadBalancer Service:
+  kubectl get svc frontend -n {{ .Release.Namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{.status.loadBalancer.ingress[0].ip}{"\n"}'
+{{- end }}
+Or port-forward from anywhere:
+  kubectl port-forward svc/frontend -n {{ .Release.Namespace }} 8080:8080   →  http://localhost:8080
+
+Images: {{ .Values.image.registry }}/{{ .Values.image.repository }}/railshack-<service>:{{ .Values.image.tag }}
+RailShack is a DevOps Shack project · https://devopsshack.com
+Watch how it is built: https://www.youtube.com/@devopsshack

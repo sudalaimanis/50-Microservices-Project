@@ -1,0 +1,9 @@
+{
+  "name": "railshack-tourism",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RailShack tourism microservice (DevOps Shack)",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "engines": { "node": ">=20" }
+}

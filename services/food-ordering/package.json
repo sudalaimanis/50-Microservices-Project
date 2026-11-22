@@ -1,0 +1,9 @@
+{
+  "name": "railshack-food-ordering",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RailShack food-ordering microservice (DevOps Shack)",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "engines": { "node": ">=20" }
+}

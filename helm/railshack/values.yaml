@@ -1,0 +1,227 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# RailShack Helm chart values.
+# Every one of the 50 microservices is listed under `services`. Anything not set on a
+# service falls back to the defaults for its language (see `languageDefaults`).
+
+image:
+  registry: ghcr.io
+  # Your GitHub user or org, in lowercase. Images are <registry>/<repository>/railshack-<service>:<tag>
+  repository: your-github-user
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Private GHCR packages: CD creates the Secret "ghcr-pull" from the repository secret GHCR_PULL_TOKEN
+# (a classic PAT with only read:packages) and sets this list for us. By hand:
+#   kubectl create secret docker-registry ghcr-pull -n railshack --docker-server=ghcr.io \
+#     --docker-username=<github-user> --docker-password=<PAT with read:packages>
+imagePullSecrets: []
+#  - name: ghcr-pull
+
+app:
+  environment: production
+  clusterName: kubernetes
+  saleBanner: ""            # e.g. "BLACK FRIDAY · use code BLACKFRIDAY for 20% off"
+  rateLimitPerSecond: 1000
+  tatkalAlwaysOpen: true
+
+# Applied to every service unless overridden
+defaults:
+  replicas: 1
+  workFactor: 0             # ms of simulated CPU work per request (used for autoscaling demos)
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 60
+  pdb:
+    enabled: false
+    minAvailable: 1
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: /metrics
+
+languageDefaults:
+  go:
+    resources: { requests: { cpu: 20m, memory: 24Mi }, limits: { memory: 96Mi } }
+  node:
+    resources: { requests: { cpu: 25m, memory: 64Mi }, limits: { memory: 192Mi } }
+  python:
+    resources: { requests: { cpu: 20m, memory: 32Mi }, limits: { memory: 128Mi } }
+  java:
+    resources: { requests: { cpu: 50m, memory: 128Mi }, limits: { memory: 320Mi } }
+
+# How users reach the web UI. Only `frontend` is ever exposed; the other 49 services stay internal.
+#   alb-ingress  → AWS EKS Auto Mode: an Application Load Balancer created from an Ingress (no controller to install)
+#   loadbalancer → a plain LoadBalancer Service (no domain or HTTPS)
+#   none         → internal only; use kubectl port-forward
+access:
+  mode: none
+  host: ""                    # our domain, e.g. railshack.prod-bat.site (empty = use the ALB's own address). CD sets it from the APP_DOMAIN variable
+  alb:
+    scheme: internet-facing
+    certificateArns: []       # ACM certificate ARN(s) for HTTPS, same region as the cluster. CD sets it from the ACM_CERT_ARN variable
+
+# Grafana on grafana.<access.host>, through the same ALB as the app (needs alb-ingress and a domain).
+grafanaIngress:
+  enabled: false
+  namespace: monitoring       # where kube-prometheus-stack runs
+  service: monitoring-grafana # its Grafana Service (release "monitoring")
+  host: ""                    # empty = grafana.<access.host>
+
+frontend:
+  service:
+    type: ClusterIP           # set access.mode=loadbalancer to make this a LoadBalancer
+    port: 80
+    annotations: {}
+
+auth:
+  secret: ""              # token signing key; empty = generate one on first install and keep it
+
+postgres:                   # the source of truth: accounts, bookings, My Trips
+  enabled: true
+  image: postgres:16-alpine
+  database: railshack
+  user: railshack
+  password: ""              # empty = generate one on first install and keep it (Secret railshack-postgres)
+  maxConnections: 200
+  storage:
+    size: 10Gi
+    className: ""           # empty = the cluster's default StorageClass
+    createEBSClass: false   # values-eks.yaml turns this on (EKS Auto Mode has no default StorageClass)
+  resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { memory: 1Gi } }
+  metrics:                  # postgres_exporter sidecar: database metrics for the Data layer dashboard
+    enabled: false
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+    resources: { requests: { cpu: 10m, memory: 24Mi }, limits: { memory: 64Mi } }
+
+redis:                      # a cache in front of PostgreSQL: fast, but fine to lose
+  enabled: true
+  image: redis:7-alpine
+  maxMemory: 96mb           # when full, Redis drops the least recently used keys
+  resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { memory: 128Mi } }
+  metrics:                  # redis_exporter sidecar: cache hit ratio, keys, memory, evictions
+    enabled: false
+    image: oliver006/redis_exporter:v1.89.0
+    resources: { requests: { cpu: 10m, memory: 16Mi }, limits: { memory: 48Mi } }
+
+serviceMonitor:            # Prometheus scrapes /metrics on every service (needs kube-prometheus-stack)
+  enabled: false
+  interval: 15s
+
+grafanaDashboard:          # the four RailShack dashboards (helm/railshack/dashboards/*.json), loaded by Grafana automatically
+  enabled: false
+  folder: RailShack         # the Grafana folder they appear in
+
+prometheusRules:           # RailShack alert rules for Prometheus (service down, errors, latency, database, cache, pods)
+  enabled: false
+
+services:
+  # ---- Users & Auth ----
+  auth:
+    lang: go
+  user-profile:
+    lang: node
+  passengers:
+    lang: node
+  kyc:
+    lang: python
+  notifications:
+    lang: go
+  preferences:
+    lang: node
+  # ---- Trains & Search ----
+  stations:
+    lang: go
+  trains:
+    lang: go
+  routes:
+    lang: go
+  schedules:
+    lang: java
+  search:
+    lang: go
+  seat-map:
+    lang: go
+  fares:
+    lang: java
+  quota:
+    lang: go
+  # ---- Booking ----
+  booking:
+    lang: go
+  pnr:
+    lang: go
+  seat-allocation:
+    lang: go
+  waitlist:
+    lang: node
+  rac:
+    lang: node
+  tatkal:
+    lang: python
+  cancellation:
+    lang: node
+  refunds:
+    lang: go
+  booking-history:
+    lang: node
+  ticket-pdf:
+    lang: python
+  # ---- Payments ----
+  payment-gateway:
+    lang: go
+  wallet:
+    lang: go
+  upi:
+    lang: node
+  invoices:
+    lang: java
+  offers:
+    lang: node
+  settlements:
+    lang: python
+  # ---- Travel Extras ----
+  live-status:
+    lang: go
+  platform-info:
+    lang: node
+  food-ordering:
+    lang: node
+  retiring-rooms:
+    lang: python
+  tourism:
+    lang: node
+  cab-booking:
+    lang: go
+  insurance:
+    lang: java
+  chart-preparation:
+    lang: python
+  # ---- Platform ----
+  api-gateway:
+    lang: go
+  config:
+    lang: go
+  rate-limiter:
+    lang: go
+  audit-log:
+    lang: go
+  analytics:
+    lang: node
+  search-indexer:
+    lang: go
+  email:
+    lang: node
+  sms:
+    lang: node
+  scheduler:
+    lang: go
+  feedback:
+    lang: node
+  admin:
+    lang: node
+  frontend:
+    lang: node

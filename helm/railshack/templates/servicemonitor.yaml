@@ -1,0 +1,27 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# Tells Prometheus (kube-prometheus-stack) to scrape /metrics on all 50 services,
+# plus the PostgreSQL and Redis exporters when they are turned on.
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: railshack
+  labels:
+    app.kubernetes.io/part-of: railshack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: railshack
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  jobLabel: app.kubernetes.io/name      # job = the service name
+  endpoints:
+    - port: http                         # every microservice; PostgreSQL and Redis have no http port, so they are skipped
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+      honorLabels: true                  # keep our own service="…" label
+    - port: metrics                      # the PostgreSQL and Redis exporters (only those two Services have this port)
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

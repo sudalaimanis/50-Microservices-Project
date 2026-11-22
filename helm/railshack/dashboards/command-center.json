@@ -1,0 +1,2710 @@
+{
+ "uid": "railshack-command-center",
+ "title": "RailShack · Command Center",
+ "description": "One screen for all 50 microservices: health, traffic, the booking journey, the data layer and firing alerts.",
+ "tags": [
+  "railshack",
+  "devops-shack",
+  "overview"
+ ],
+ "editable": true,
+ "graphTooltip": 1,
+ "refresh": "10s",
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-30m",
+  "to": "now"
+ },
+ "timezone": "browser",
+ "timepicker": {
+  "refresh_intervals": [
+   "5s",
+   "10s",
+   "30s",
+   "1m",
+   "5m"
+  ]
+ },
+ "links": [
+  {
+   "title": "RailShack dashboards",
+   "type": "dashboards",
+   "tags": [
+    "railshack"
+   ],
+   "asDropdown": true,
+   "includeVars": true,
+   "keepTime": true,
+   "icon": "external link"
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "datasource",
+    "label": "Data source",
+    "type": "datasource",
+    "query": "prometheus",
+    "current": {},
+    "hide": 0
+   },
+   {
+    "name": "namespace",
+    "label": "Namespace",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${datasource}"
+    },
+    "query": {
+     "query": "label_values(railshack_up, namespace)",
+     "refId": "ns"
+    },
+    "definition": "label_values(railshack_up, namespace)",
+    "refresh": 2,
+    "current": {
+     "text": "railshack",
+     "value": "railshack"
+    },
+    "hide": 0
+   }
+  ]
+ },
+ "annotations": {
+  "list": [
+   {
+    "builtIn": 1,
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "hide": true,
+    "iconColor": "rgba(0, 211, 255, 1)",
+    "name": "Annotations & Alerts",
+    "type": "dashboard"
+   }
+  ]
+ },
+ "panels": [
+  {
+   "type": "text",
+   "title": "",
+   "transparent": true,
+   "options": {
+    "mode": "html",
+    "content": "<div style=\"display:flex;align-items:center;gap:16px;padding:6px 4px\"><div style=\"font-size:26px;font-weight:700;color:#2563EB\">🚆 Command Center</div><div style=\"opacity:.75;font-size:14px\">50 microservices · AWS EKS Auto Mode · PostgreSQL + Redis · Prometheus + Grafana</div><div style=\"margin-left:auto;font-size:12px;opacity:.6\">RailShack · a DevOps Shack project · devopsshack.com</div></div>"
+   },
+   "gridPos": {
+    "h": 2,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "id": 1,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Right now",
+   "collapsed": false,
+   "id": 2,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 2
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Services up",
+   "description": "Distinct services Prometheus can scrape. 50 means every service has at least one healthy pod.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(count by (service) (railshack_up{namespace=\"$namespace\"}))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 45
+       },
+       {
+        "color": "#16A34A",
+        "value": 50
+       }
+      ]
+     },
+     "links": [
+      {
+       "title": "Service deep dive",
+       "url": "/d/railshack-service?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 0,
+    "y": 3
+   },
+   "id": 3,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Success rate",
+   "description": "Share of requests that did not return a 5xx.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - ((sum (rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\"}[$__rate_interval])), 1e-9))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.95
+       },
+       {
+        "color": "#16A34A",
+        "value": 0.99
+       }
+      ]
+     },
+     "decimals": 2
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 3,
+    "y": 3
+   },
+   "id": 4,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Requests / second",
+   "description": "All requests across all 50 services.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#2563EB"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 6,
+    "y": 3
+   },
+   "id": 5,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Avg response time",
+   "description": "Average time a service takes to answer one request.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#CA8A04",
+        "value": 0.2
+       },
+       {
+        "color": "#DC2626",
+        "value": 0.5
+       }
+      ]
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 9,
+    "y": 3
+   },
+   "id": 6,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Bookings / minute",
+   "description": "Successful bookings (HTTP 201 from the booking service).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"booking\",code=\"201\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#7C3AED"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 12,
+    "y": 3
+   },
+   "id": 7,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Pods ready",
+   "description": "RailShack pods passing their readiness probe.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(kube_pod_status_ready{namespace=\"$namespace\",condition=\"true\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 15,
+    "y": 3
+   },
+   "id": 8,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Nodes",
+   "description": "EC2 instances in the cluster. EKS Auto Mode adds and removes them as pods need room.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(kube_node_info)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     },
+     "links": [
+      {
+       "title": "Kubernetes & autoscaling",
+       "url": "/d/railshack-kubernetes?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 18,
+    "y": 3
+   },
+   "id": 9,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Firing alerts",
+   "description": "RailShack alert rules currently firing. The table at the bottom lists them.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "count(ALERTS{alertstate=\"firing\",project=\"railshack\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 1
+       },
+       {
+        "color": "#DC2626",
+        "value": 3
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 3,
+    "x": 21,
+    "y": 3
+   },
+   "id": 10,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Golden signals",
+   "collapsed": false,
+   "id": 11,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 7
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Traffic by status class",
+   "description": "Every request, split by HTTP status class. Red is what users feel as 'something went wrong'.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"2..\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "2xx success"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"3..|1..\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "1xx/3xx"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"4..\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "4xx client"
+    },
+    {
+     "refId": "D",
+     "expr": "sum(rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "5xx server"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 40,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "2xx success"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "1xx/3xx"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#2563EB"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "4xx client"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#CA8A04"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "5xx server"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 8
+   },
+   "id": 12,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Error rate and response time",
+   "description": "Error rate (left, %) and average response time (right, seconds).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "error rate"
+    },
+    {
+     "refId": "B",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "avg response time"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "error rate"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "avg response time"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "custom.axisPlacement",
+        "value": "right"
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#2563EB"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 8
+   },
+   "id": 13,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "The booking journey",
+   "collapsed": false,
+   "id": 14,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 16
+   },
+   "panels": []
+  },
+  {
+   "type": "bargauge",
+   "title": "Journey, per minute",
+   "description": "Each step of a user's trip through RailShack, as successful requests per minute to the service that does it.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"search\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "1 · Searches",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "B",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"seat-map\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "2 · Seat maps",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "C",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"fares\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "3 · Fare quotes",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "D",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"payment-gateway\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "4 · Payments",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "E",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"booking\",code=\"201\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "5 · Bookings",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "F",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"pnr\",method=\"GET\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "6 · PNR checks",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "G",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"cancellation\",code=~\"2..\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "7 · Cancellations",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#7C3AED"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "auto",
+    "sizing": "auto",
+    "minVizHeight": 16,
+    "maxVizHeight": 300,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 9,
+    "x": 0,
+    "y": 17
+   },
+   "id": 15,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Bookings vs failed payments, per minute",
+   "description": "When payments fail, bookings fail with them. This is the business view of an incident.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"booking\",code=\"201\"}[$__rate_interval])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "bookings"
+    },
+    {
+     "refId": "B",
+     "expr": "(sum(rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"payment-gateway\",code=~\"5..\"}[$__rate_interval])) or vector(0)) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "failed payments"
+    },
+    {
+     "refId": "C",
+     "expr": "(sum(rate(railshack_http_requests_total{namespace=\"$namespace\",service=\"booking\",code=~\"5..\"}[$__rate_interval])) or vector(0)) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "failed bookings"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "bookings"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#16A34A"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "failed payments"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#DC2626"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "failed bookings"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#EA580C"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 15,
+    "x": 9,
+    "y": 17
+   },
+   "id": 16,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Health by domain",
+   "collapsed": false,
+   "id": 17,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 26
+   },
+   "panels": []
+  },
+  {
+   "type": "bargauge",
+   "title": "Requests / second by domain",
+   "description": "The 50 services grouped into the six business domains of RailShack.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"auth|user-profile|passengers|kyc|notifications|preferences\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Users & Auth",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "B",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"stations|trains|routes|schedules|search|seat-map|fares|quota\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Trains & Search",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "C",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"booking|pnr|seat-allocation|waitlist|rac|tatkal|cancellation|refunds|booking-history|ticket-pdf\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Booking",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "D",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"payment-gateway|wallet|upi|invoices|offers|settlements\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Payments",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "E",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"live-status|platform-info|food-ordering|retiring-rooms|tourism|cab-booking|insurance|chart-preparation\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Travel Extras",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "F",
+     "expr": "sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"api-gateway|config|rate-limiter|audit-log|analytics|search-indexer|email|sms|scheduler|feedback|admin|frontend\"}[$__rate_interval]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Platform",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "min": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#2563EB"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "auto",
+    "sizing": "auto",
+    "minVizHeight": 16,
+    "maxVizHeight": 300,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 27
+   },
+   "id": 18,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "bargauge",
+   "title": "Error rate by domain",
+   "description": "Share of 5xx responses in each domain.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"auth|user-profile|passengers|kyc|notifications|preferences\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"auth|user-profile|passengers|kyc|notifications|preferences\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Users & Auth",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "B",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"stations|trains|routes|schedules|search|seat-map|fares|quota\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"stations|trains|routes|schedules|search|seat-map|fares|quota\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Trains & Search",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "C",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"booking|pnr|seat-allocation|waitlist|rac|tatkal|cancellation|refunds|booking-history|ticket-pdf\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"booking|pnr|seat-allocation|waitlist|rac|tatkal|cancellation|refunds|booking-history|ticket-pdf\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Booking",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "D",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"payment-gateway|wallet|upi|invoices|offers|settlements\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"payment-gateway|wallet|upi|invoices|offers|settlements\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Payments",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "E",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"live-status|platform-info|food-ordering|retiring-rooms|tourism|cab-booking|insurance|chart-preparation\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"live-status|platform-info|food-ordering|retiring-rooms|tourism|cab-booking|insurance|chart-preparation\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Travel Extras",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "F",
+     "expr": "(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"api-gateway|config|rate-limiter|audit-log|analytics|search-indexer|email|sms|scheduler|feedback|admin|frontend\",code=~\"5..\"}[$__rate_interval])) or vector(0)) / clamp_min(sum (rate(railshack_http_requests_total{namespace=\"$namespace\",service=~\"api-gateway|config|rate-limiter|audit-log|analytics|search-indexer|email|sms|scheduler|feedback|admin|frontend\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Platform",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#CA8A04",
+        "value": 0.01
+       },
+       {
+        "color": "#DC2626",
+        "value": 0.05
+       }
+      ]
+     },
+     "max": 0.2
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "auto",
+    "sizing": "auto",
+    "minVizHeight": 16,
+    "maxVizHeight": 300,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 27
+   },
+   "id": 19,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "bargauge",
+   "title": "Avg response time by domain",
+   "description": "Average response time in each domain.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"auth|user-profile|passengers|kyc|notifications|preferences\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"auth|user-profile|passengers|kyc|notifications|preferences\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Users & Auth",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "B",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"stations|trains|routes|schedules|search|seat-map|fares|quota\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"stations|trains|routes|schedules|search|seat-map|fares|quota\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Trains & Search",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "C",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"booking|pnr|seat-allocation|waitlist|rac|tatkal|cancellation|refunds|booking-history|ticket-pdf\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"booking|pnr|seat-allocation|waitlist|rac|tatkal|cancellation|refunds|booking-history|ticket-pdf\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Booking",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "D",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"payment-gateway|wallet|upi|invoices|offers|settlements\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"payment-gateway|wallet|upi|invoices|offers|settlements\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Payments",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "E",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"live-status|platform-info|food-ordering|retiring-rooms|tourism|cab-booking|insurance|chart-preparation\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"live-status|platform-info|food-ordering|retiring-rooms|tourism|cab-booking|insurance|chart-preparation\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Travel Extras",
+     "instant": true,
+     "range": false
+    },
+    {
+     "refId": "F",
+     "expr": "sum (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\",service=~\"api-gateway|config|rate-limiter|audit-log|analytics|search-indexer|email|sms|scheduler|feedback|admin|frontend\"}[$__rate_interval])) / clamp_min(sum (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\",service=~\"api-gateway|config|rate-limiter|audit-log|analytics|search-indexer|email|sms|scheduler|feedback|admin|frontend\"}[$__rate_interval])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "Platform",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#16A34A",
+        "value": null
+       },
+       {
+        "color": "#CA8A04",
+        "value": 0.2
+       },
+       {
+        "color": "#DC2626",
+        "value": 0.5
+       }
+      ]
+     },
+     "max": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "auto",
+    "sizing": "auto",
+    "minVizHeight": 16,
+    "maxVizHeight": 300,
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 27
+   },
+   "id": 20,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "All 50 services",
+   "collapsed": false,
+   "id": 21,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 35
+   },
+   "panels": []
+  },
+  {
+   "type": "table",
+   "title": "Service health",
+   "description": "Every service in one table. Click a column to sort. Red cells need attention.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (service, language) (railshack_up{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "B",
+     "expr": "max by (service, version) (railshack_build_info{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "C",
+     "expr": "sum by (service) (label_replace(kube_deployment_status_replicas_available{namespace=\"$namespace\"}, \"service\", \"$1\", \"deployment\", \"(.*)\"))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "D",
+     "expr": "sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\"}[5m]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "E",
+     "expr": "(sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[5m])) or 0 * sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\"}[5m]))) / clamp_min(sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\"}[5m])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "refId": "F",
+     "expr": "sum by (service) (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\"}[5m])) / clamp_min(sum by (service) (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\"}[5m])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "merge",
+     "options": {}
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "Value #A": true,
+       "Value #B": true
+      },
+      "renameByName": {
+       "service": "Service",
+       "language": "Language",
+       "version": "Version",
+       "Value #C": "Pods ready",
+       "Value #D": "Req/s",
+       "Value #E": "Error rate",
+       "Value #F": "Avg response"
+      },
+      "indexByName": {}
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Pods ready"
+      },
+      "properties": [
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#DC2626",
+           "value": null
+          },
+          {
+           "color": "#EA580C",
+           "value": 1
+          },
+          {
+           "color": "#16A34A",
+           "value": 2
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 110
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Req/s"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "reqps"
+       },
+       {
+        "id": "decimals",
+        "value": 2
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#2563EB",
+           "value": null
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "gauge",
+         "mode": "lcd",
+         "valueDisplayMode": "text"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Error rate"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "percentunit"
+       },
+       {
+        "id": "decimals",
+        "value": 2
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#16A34A",
+           "value": null
+          },
+          {
+           "color": "#CA8A04",
+           "value": 0.01
+          },
+          {
+           "color": "#DC2626",
+           "value": 0.05
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 120
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Avg response"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "#16A34A",
+           "value": null
+          },
+          {
+           "color": "#CA8A04",
+           "value": 0.2
+          },
+          {
+           "color": "#DC2626",
+           "value": 0.5
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 130
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Language"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 100
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Version"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 120
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Service"
+      },
+      "properties": [
+       {
+        "id": "links",
+        "value": [
+         {
+          "title": "Open ${__value.text}",
+          "url": "/d/railshack-service?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}&var-service=${__value.text}"
+         }
+        ]
+       },
+       {
+        "id": "custom.width",
+        "value": 170
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    },
+    "sortBy": [
+     {
+      "displayName": "Req/s",
+      "desc": true
+     }
+    ]
+   },
+   "gridPos": {
+    "h": 16,
+    "w": 24,
+    "x": 0,
+    "y": 36
+   },
+   "id": 22,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Who is busy, failing, slow",
+   "collapsed": false,
+   "id": 23,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 52
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Requests / second by service (top 10)",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\"}[$__rate_interval])))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 0,
+    "y": 53
+   },
+   "id": 24,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Errors / second by service (5xx)",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (service) (rate(railshack_http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[$__rate_interval])) > 0",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 8,
+    "y": 53
+   },
+   "id": 25,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Avg response time by service (top 10)",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(10, sum by (service) (rate(railshack_http_request_duration_seconds_sum{namespace=\"$namespace\"}[$__rate_interval])) / clamp_min(sum by (service) (rate(railshack_http_request_duration_seconds_count{namespace=\"$namespace\"}[$__rate_interval])), 1e-9))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "{{service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 12,
+      "gradientMode": "opacity",
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "smooth",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     },
+     "color": {
+      "mode": "palette-classic"
+     },
+     "min": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 16,
+    "y": 53
+   },
+   "id": 26,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Data layer at a glance",
+   "collapsed": false,
+   "id": 27,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 62
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "PostgreSQL",
+   "description": "The source of truth: accounts, bookings, My Trips.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(pg_up{namespace=\"$namespace\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#16A34A",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "#DC2626"
+        },
+        "1": {
+         "text": "UP",
+         "color": "#16A34A"
+        }
+       }
+      }
+     ],
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 63
+   },
+   "id": 28,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Redis",
+   "description": "The cache in front of PostgreSQL. Losing it costs speed, never data.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(redis_up{namespace=\"$namespace\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#16A34A",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "#DC2626"
+        },
+        "1": {
+         "text": "UP",
+         "color": "#16A34A"
+        }
+       }
+      }
+     ],
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 63
+   },
+   "id": 29,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Cache hit ratio",
+   "description": "Share of cache lookups answered by Redis without touching PostgreSQL.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[5m])) / clamp_min(sum(rate(redis_keyspace_hits_total{namespace=\"$namespace\"}[5m])) + sum(rate(redis_keyspace_misses_total{namespace=\"$namespace\"}[5m])), 1e-9)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "thresholds",
+      "fixedColor": "#2563EB"
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#DC2626",
+        "value": null
+       },
+       {
+        "color": "#EA580C",
+        "value": 0.5
+       },
+       {
+        "color": "#16A34A",
+        "value": 0.8
+       }
+      ]
+     },
+     "decimals": 1,
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 63
+   },
+   "id": 30,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "DB connections",
+   "description": "Open connections to the railshack database (auth, pnr, booking-history pods).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(pg_stat_database_numbackends{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#0B2545"
+     },
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 63
+   },
+   "id": 31,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Cached keys",
+   "description": "Keys in Redis right now: pnr:<PNR> and trips:<user> copies.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(redis_db_keys{namespace=\"$namespace\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#7C3AED"
+     },
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 63
+   },
+   "id": 32,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Rows written (since start)",
+   "description": "Rows inserted into the railshack database since PostgreSQL started (users, bookings, trips).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(pg_stat_database_tup_inserted{namespace=\"$namespace\",datname=\"railshack\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": ""
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#16A34A"
+     },
+     "links": [
+      {
+       "title": "Data layer",
+       "url": "/d/railshack-data?${__url_time_range}&var-datasource=${datasource}&var-namespace=${namespace}"
+      }
+     ]
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "textMode": "value",
+    "justifyMode": "center",
+    "orientation": "auto",
+    "wideLayout": true
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 63
+   },
+   "id": 33,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  },
+  {
+   "type": "row",
+   "title": "Firing alerts",
+   "collapsed": false,
+   "id": 34,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 67
+   },
+   "panels": []
+  },
+  {
+   "type": "table",
+   "title": "RailShack alerts firing now",
+   "description": "Rules from the railshack-alerts PrometheusRule. Empty is good.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "ALERTS{alertstate=\"firing\",project=\"railshack\"}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "legendFormat": "",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "merge",
+     "options": {}
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true,
+       "Value #A": true,
+       "Value": true,
+       "__name__": true,
+       "alertstate": true,
+       "project": true,
+       "namespace": true,
+       "instance": true,
+       "container": true,
+       "endpoint": true,
+       "uid": true,
+       "prometheus": true
+      },
+      "renameByName": {
+       "alertname": "Alert",
+       "severity": "Severity",
+       "service": "Service",
+       "job": "Job",
+       "pod": "Pod",
+       "deployment": "Deployment",
+       "horizontalpodautoscaler": "Autoscaler"
+      },
+      "indexByName": {}
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      },
+      "filterable": true
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Severity"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "gradient"
+        }
+       },
+       {
+        "id": "custom.width",
+        "value": 110
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "critical": {
+            "color": "#DC2626"
+           },
+           "warning": {
+            "color": "#EA580C"
+           },
+           "info": {
+            "color": "#2563EB"
+           }
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    },
+    "noValue": "No alerts firing"
+   },
+   "gridPos": {
+    "h": 6,
+    "w": 24,
+    "x": 0,
+    "y": 68
+   },
+   "id": 35,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   }
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# Extra Auto Mode NodePool for the Black Friday demo: small 2-vCPU Spot instances, so a
+# traffic spike turns into lots of visible nodes at low cost. A hard CPU limit caps spend.
+#   kubectl apply -f cluster/nodepool-blackfriday.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: blackfriday
+spec:
+  template:
+    metadata:
+      labels:
+        railshack.devopsshack.com/pool: blackfriday
+    spec:
+      nodeClassRef:
+        group: eks.amazonaws.com
+        kind: NodeClass
+        name: default
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: eks.amazonaws.com/instance-category
+          operator: In
+          values: ["c", "m"]
+        - key: eks.amazonaws.com/instance-cpu
+          operator: In
+          values: ["2"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64", "arm64"]   # images are multi-arch, so Graviton Spot capacity counts too
+      expireAfter: 24h
+  limits:
+    cpu: "220"          # hard ceiling: at most ~110 two-vCPU nodes
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+  weight: 50

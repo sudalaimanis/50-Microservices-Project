@@ -1,0 +1,26 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# EKS with Auto Mode: AWS runs Karpenter, load balancing and storage for us.
+#   eksctl create cluster -f cluster/eks-auto-mode.yaml        (~15 minutes)
+#   eksctl delete cluster -f cluster/eks-auto-mode.yaml --disable-nodegroup-eviction   (when done!)
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: railshack
+  region: ap-south-1
+  # Always pin the Kubernetes version. Without it, eksctl picks its own default, which can be
+  # close to the end of standard support (after that, AWS charges ~6x for extended support).
+  # Check what is current:  aws eks describe-cluster-versions --region ap-south-1
+  # Quoted so YAML reads it as text, not the number 1.36.
+  version: "1.36"
+  tags:
+    project: railshack
+    owner: devops-shack
+autoModeConfig:
+  enabled: true
+
+# metrics-server feeds CPU numbers to the HPAs (Black Friday autoscaling).
+# Auto Mode does not install it, so eksctl adds it as an EKS community add-on.
+addons:
+  - name: metrics-server
