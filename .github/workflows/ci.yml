@@ -1,0 +1,195 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# CI — test all 50 microservices, validate the Helm chart, build and push images to GHCR.
+#
+# On every push and pull request:
+#   1. plan       works out which images changed (scripts/ci/plan.py)
+#   2. test       starts all 50 services on the runner and runs the end-to-end smoke test
+#   3. helm       lints and renders the chart for every environment and validates it with kubeconform
+#   4. build      builds only the changed images (matrix, in parallel), scans them with Trivy, pushes to GHCR
+#   5. retag      gives unchanged images the same commit tag, so one tag = one complete release
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: Rebuild all 50 images
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.plan.outputs.changed }}
+      unchanged: ${{ steps.plan.outputs.unchanged }}
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: tag
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - id: plan
+        env:
+          BUILD_ALL: ${{ github.event_name == 'workflow_dispatch' && inputs.build_all }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/ci/plan.py
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # A real PostgreSQL and Redis, so the test covers the database and the cache too.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_DB: railshack, POSTGRES_USER: railshack, POSTGRES_PASSWORD: ci-only-password }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U railshack" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgres://railshack:ci-only-password@localhost:5432/railshack
+      REDIS_ADDR: localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "1.24", cache: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }
+      - name: Vet Go services
+        run: for d in libs/gokit services/*/; do [ -f "$d/go.mod" ] && (cd "$d" && go vet ./...); done
+      - name: Syntax-check Node and Python services
+        run: |
+          for f in services/*/index.js libs/nodekit/railshack-kit/index.js services/frontend/public/app.js; do node --check "$f"; done
+          python3 -m py_compile libs/pykit/railkit.py services/*/app.py
+      - name: Start all 50 services
+        run: scripts/ci/start-services.sh
+      - name: End-to-end smoke test
+        run: scripts/smoke-test.sh http://localhost:9050
+      - name: Upload service logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: service-logs, path: .run/logs }
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: helm version   # Helm comes preinstalled on GitHub's Ubuntu runners
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Lint and validate every environment
+        run: |
+          helm lint helm/railshack
+          DOMAIN="-f helm/railshack/values-eks.yaml --set access.host=railshack.example.com --set access.alb.certificateArns[0]=arn:aws:acm:ap-south-1:123456789012:certificate/example"
+          for env in "" "-f helm/railshack/values-eks.yaml" "$DOMAIN" "-f helm/railshack/values-eks.yaml -f helm/railshack/values-blackfriday.yaml"; do
+            echo "::group::helm template $env"
+            helm template railshack helm/railshack -n railshack $env > rendered.yaml
+            # Core resources are validated against Kubernetes 1.36. EKS IngressClassParams has no
+            # public schema, so it is skipped.
+            kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas \
+              -schema-location default \
+              -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+              rendered.yaml
+            echo "::endgroup::"
+          done
+
+  build:
+    needs: [plan, test, helm]
+    if: needs.plan.outputs.changed != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        service: ${{ fromJSON(needs.plan.outputs.changed) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image name
+        run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/railshack-${{ matrix.service }}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          # Multi-arch on main: amd64 for most nodes, arm64 for Graviton / Apple Silicon.
+          # Pull requests build amd64 only, so the image can be loaded locally for the Trivy scan.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: |
+            ${{ env.IMAGE }}:${{ needs.plan.outputs.tag }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:latest', env.IMAGE) || '' }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=railshack-${{ matrix.service }}
+            org.opencontainers.image.vendor=DevOps Shack
+            org.opencontainers.image.url=https://devopsshack.com
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0, pinned by commit
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ env.IMAGE }}:${{ needs.plan.outputs.tag }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"   # report only; set to "1" to fail the build on findings
+
+  retag:
+    needs: [plan, build]
+    if: >-
+      always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs.plan.outputs.unchanged != '[]' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Re-tag unchanged images with this commit's tag
+        env:
+          UNCHANGED: ${{ needs.plan.outputs.unchanged }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for svc in $(echo "$UNCHANGED" | jq -r '.[]'); do
+            img="${REGISTRY}/${owner}/railshack-${svc}"
+            docker buildx imagetools create -t "${img}:${TAG}" "${img}:latest"
+          done

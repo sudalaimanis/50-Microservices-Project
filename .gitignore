@@ -1,0 +1,6 @@
+.run/
+node_modules/
+*.class
+
+# Interactive architecture page is kept private (only the static PNGs are published)
+docs/architecture/*.html

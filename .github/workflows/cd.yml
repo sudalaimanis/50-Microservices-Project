@@ -1,0 +1,116 @@
+# RailShack · 50 Microservices Project by DevOps Shack
+# Copyright (c) 2026 DevOps Shack (Aditya Jaiswal) · https://devopsshack.com · https://www.youtube.com/@devopsshack
+# SPDX-License-Identifier: Apache-2.0 · Keep this notice and the NOTICE file in any copy or derivative work.
+# CD — deploy RailShack to AWS EKS with Helm, together with Prometheus + Grafana for its metrics.
+#
+# Runs automatically when CI succeeds on main, or manually from the Actions tab.
+# Logs in to AWS with OIDC — no long-lived AWS keys are stored in GitHub.
+#
+# Repository variables: AWS_REGION, EKS_CLUSTER
+# Repository secret:    AWS_ROLE_ARN   (created by cluster/github-oidc-aws.sh)
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy (e.g. sha-1a2b3c4 or latest)
+        default: latest
+      blackfriday:
+        description: Apply the Black Friday autoscaling profile
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write   # needed for the OIDC login to AWS
+
+concurrency:
+  group: cd-eks
+  cancel-in-progress: false
+
+env:
+  NAMESPACE: railshack
+
+jobs:
+  deploy-eks:
+    # Automatic runs deploy only after a green CI run on main.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production-eks
+    steps:
+      - name: Work out what to deploy
+        id: v
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"; echo "ref=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=sha-${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"; echo "ref=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        with: { ref: "${{ steps.v.outputs.ref }}" }
+      - name: Show the identity GitHub sends to AWS (OIDC claims, not the token)
+        # If the AWS login says "Not authorized", compare "sub" here with the role's trust policy.
+        run: |
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c '
+          import base64, json, sys
+          jwt = json.load(sys.stdin)["value"].split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(jwt + "=" * (-len(jwt) % 4)))
+          for k in ("sub", "aud", "repository", "environment", "ref", "event_name"):
+              print(f"{k:12} {claims.get(k)}")'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER }}" --region "${{ vars.AWS_REGION }}"
+      - run: helm version   # Helm comes preinstalled on GitHub's Ubuntu runners
+      - name: Prometheus + Grafana (kube-prometheus-stack)
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+          helm upgrade --install monitoring prometheus-community/kube-prometheus-stack --version 93.4.0 \
+            -n monitoring --create-namespace -f cluster/monitoring-values.yaml --wait --timeout 10m
+      - name: Image pull secret for private GHCR packages
+        # One read-only token lets the cluster pull all 50 private images, so no package has to be made public.
+        # Set the repository secret GHCR_PULL_TOKEN (classic PAT with only read:packages). Skipped when it is not set.
+        env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          if [ -z "$GHCR_PULL_TOKEN" ]; then echo "GHCR_PULL_TOKEN not set: the packages must be public"; exit 0; fi
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret docker-registry ghcr-pull -n "$NAMESPACE" --docker-server=ghcr.io \
+            --docker-username="${GITHUB_REPOSITORY_OWNER,,}" --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+      - name: Helm upgrade (rolls back automatically on failure)
+        env:
+          EXTRA: ${{ inputs.blackfriday && '-f helm/railshack/values-blackfriday.yaml' || '' }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}       # e.g. railshack.prod-bat.site (empty = the ALB's own address)
+          ACM_CERT_ARN: ${{ vars.ACM_CERT_ARN }}   # ACM certificate for APP_DOMAIN and grafana.APP_DOMAIN (empty = HTTP only)
+          PULL_SECRET: ${{ secrets.GHCR_PULL_TOKEN != '' && 'ghcr-pull' || '' }}
+          REPLICAS: ${{ vars.REPLICAS }}           # optional: 1 = one pod per service (fits a new account's 8-vCPU limit)
+        run: |
+          DOMAIN=()
+          if [ "$REPLICAS" = "1" ]; then           # one pod each: no PodDisruptionBudget, or it would block node changes
+            DOMAIN+=(--set defaults.replicas=1 --set defaults.pdb.enabled=false)
+          elif [ -n "$REPLICAS" ]; then DOMAIN+=(--set "defaults.replicas=$REPLICAS"); fi
+          [ -n "$PULL_SECRET" ] && DOMAIN+=(--set "imagePullSecrets[0].name=$PULL_SECRET")
+          [ -n "$APP_DOMAIN" ] && DOMAIN+=(--set access.host="$APP_DOMAIN")
+          [ -n "$ACM_CERT_ARN" ] && DOMAIN+=(--set-json "access.alb.certificateArns=[\"$ACM_CERT_ARN\"]")
+          helm upgrade --install railshack helm/railshack -n "$NAMESPACE" --create-namespace \
+            -f helm/railshack/values-eks.yaml $EXTRA "${DOMAIN[@]}" \
+            --set image.repository="${GITHUB_REPOSITORY_OWNER,,}" \
+            --set image.tag="${{ steps.v.outputs.tag }}" \
+            --atomic --wait --timeout 15m
+          kubectl get pods,pvc -n "$NAMESPACE" -o wide
+      - name: Smoke test through the public load balancer
+        env:
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
+          ACM_CERT_ARN: ${{ vars.ACM_CERT_ARN }}
+        run: scripts/ci/smoke-remote.sh "$NAMESPACE"

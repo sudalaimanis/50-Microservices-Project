@@ -34,13 +34,13 @@ cat > /tmp/trust.json <<JSON
       "${MATCH}": { "token.actions.githubusercontent.com:sub": [ "repo:${OWNER}@${OWNER_ID}/${NAME}@${REPO_ID}:environment:production-eks",
                                                                     "repo:${GITHUB_REPO}:environment:production-eks" ] } } }] }
 JSON
-aws iam create-role --role-name "$ROLE" --assume-role-policy-document file:///tmp/trust.json -o none
+aws iam create-role --role-name "$ROLE" --assume-role-policy-document file:///tmp/trust.json --output json >/dev/null
 aws iam put-role-policy --role-name "$ROLE" --policy-name eks-describe \
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["eks:DescribeCluster"],"Resource":"*"}]}'
 
 # 3. Give that role admin access inside the cluster (EKS access entries).
 ROLE_ARN="arn:aws:iam::${ACCOUNT}:role/${ROLE}"
-aws eks create-access-entry --cluster-name "$CLUSTER" --region "$REGION" --principal-arn "$ROLE_ARN" -o none
+aws eks create-access-entry --cluster-name "$CLUSTER" --region "$REGION" --principal-arn "$ROLE_ARN" --output json >/dev/null
 aws eks associate-access-policy --cluster-name "$CLUSTER" --region "$REGION" --principal-arn "$ROLE_ARN" \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster -o none
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy --access-scope type=cluster --output json >/dev/null
 echo "✅ Add this as the AWS_ROLE_ARN secret in GitHub: $ROLE_ARN"
