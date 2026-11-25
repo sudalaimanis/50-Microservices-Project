@@ -226,11 +226,11 @@ eksctl create cluster -f cluster\eks-auto-mode.yaml
 
 That one file is all the cluster needs. EKS Auto Mode already runs the pieces we would otherwise install ourselves: Karpenter for nodes, the load balancer controller (so an Ingress becomes an ALB), and the EBS CSI driver (so a PersistentVolumeClaim becomes an EBS volume). eksctl also creates the VPC with the subnet tags the load balancer needs, and adds metrics-server for the HPAs.
 
-**Your domain in Route 53** (once). We use `prod-bat.site`: the app on `railshack.prod-bat.site`, Grafana on `grafana.railshack.prod-bat.site`. Create a hosted zone (about $0.50 a month), then enter its four name servers in the nameserver settings where you bought the domain. If the domain already has records there (email, a website), recreate them in the zone first. The switch usually takes 15–60 minutes.
+**Your domain in Route 53** (once). We use `sudalops.shop`: the app on `sudalops.shop`, Grafana on `grafana.sudalops.shop`. Create a hosted zone (about $0.50 a month), then enter its four name servers in the nameserver settings where you bought the domain. If the domain already has records there (email, a website), recreate them in the zone first. The switch usually takes 15–60 minutes.
 
 ```powershell
-aws route53 create-hosted-zone --name prod-bat.site --caller-reference (Get-Date -Format o)
-Resolve-DnsName prod-bat.site -Type NS    # shows the awsdns name servers once the switch is done
+aws route53 create-hosted-zone --name sudalops.shop --caller-reference (Get-Date -Format o)
+Resolve-DnsName sudalops.shop -Type NS    # shows the awsdns name servers once the switch is done
 ```
 
 Keeping DNS where you bought the domain works too: you then add ACM's validation CNAMEs and the two records below as CNAMEs by hand.
@@ -239,7 +239,7 @@ Keeping DNS where you bought the domain works too: you then add ACM's validation
 
 ```powershell
 aws acm request-certificate --region ap-south-1 --validation-method DNS `
-  --domain-name railshack.prod-bat.site --subject-alternative-names grafana.railshack.prod-bat.site
+  --domain-name sudalops.shop --subject-alternative-names grafana.sudalops.shop
 ```
 
 Add the validation CNAME records that ACM shows (Route 53 has a one-click **Create records in Route 53** button; any other DNS provider works too). When the certificate says **Issued**, copy its ARN. No domain? Skip this: the app works on the ALB's own address, but Grafana then has no public URL.
@@ -259,7 +259,7 @@ Add the validation CNAME records that ACM shows (Route 53 has a one-click **Crea
 | Secret | `AWS_ROLE_ARN` | the role ARN printed by step 2 |
 | Variable | `AWS_REGION` | `ap-south-1` |
 | Variable | `EKS_CLUSTER` | `railshack` |
-| Variable | `APP_DOMAIN` | your domain, e.g. `railshack.prod-bat.site` (optional) |
+| Variable | `APP_DOMAIN` | your domain, e.g. `sudalops.shop` (optional) |
 | Variable | `ACM_CERT_ARN` | the certificate ARN from step 1 (optional, turns on HTTPS) |
 | Variable | `REPLICAS` | optional: `1` runs one pod per service (52 pods), for a new AWS account with the 8-vCPU limit |
 | Secret | `GHCR_PULL_TOKEN` | a classic personal access token with only `read:packages` (lets the cluster pull the private images) |
@@ -276,10 +276,10 @@ The app and Grafana share one ALB (one IngressClass group). Once the deploy is g
 
 ```powershell
 $alb  = kubectl get ingress railshack -n railshack -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
-$zone = (aws route53 list-hosted-zones-by-name --dns-name prod-bat.site --query "HostedZones[0].Id" --output text).Split("/")[-1]
+$zone = (aws route53 list-hosted-zones-by-name --dns-name sudalops.shop --query "HostedZones[0].Id" --output text).Split("/")[-1]
 $albZone = aws elbv2 describe-load-balancers --region ap-south-1 `
   --query "LoadBalancers[?DNSName=='$alb'].CanonicalHostedZoneId" --output text
-$changes = @("railshack.prod-bat.site", "grafana.railshack.prod-bat.site") | ForEach-Object {
+$changes = @("sudalops.shop", "grafana.sudalops.shop") | ForEach-Object {
   @{ Action = "UPSERT"; ResourceRecordSet = @{ Name = $_; Type = "A"
      AliasTarget = @{ HostedZoneId = $albZone; DNSName = $alb; EvaluateTargetHealth = $false } } }
 }
@@ -290,12 +290,12 @@ aws route53 change-resource-record-sets --hosted-zone-id $zone --change-batch "f
 
 At another DNS provider, create two **CNAME** records to the same address instead. The address stays the same on later deploys; it changes only when the release is removed and reinstalled (`helm uninstall`, or a failed first deploy that `--atomic` rolls back), and then you run this again.
 
-If `Resolve-DnsName railshack.prod-bat.site` says the name does not exist but `Resolve-DnsName railshack.prod-bat.site -Server 8.8.8.8` works, your router cached an earlier answer: wait up to 15 minutes, or switch Windows to `8.8.8.8` and run `ipconfig /flushdns` (both as administrator).
+If `Resolve-DnsName sudalops.shop` says the name does not exist but `Resolve-DnsName sudalops.shop -Server 8.8.8.8` works, your router cached an earlier answer: wait up to 15 minutes, or switch Windows to `8.8.8.8` and run `ipconfig /flushdns` (both as administrator).
 
 **6. Open the app and Grafana:**
 
-- `https://railshack.prod-bat.site`: sign in with the demo account `devopsshack` / `devopsshack`, or create your own.
-- `https://grafana.railshack.prod-bat.site`: user `admin`, password from the command below. Open **Dashboards → RailShack → RailShack · Command Center**.
+- `https://sudalops.shop`: sign in with the demo account `devopsshack` / `devopsshack`, or create your own.
+- `https://grafana.sudalops.shop`: user `admin`, password from the command below. Open **Dashboards → RailShack → RailShack · Command Center**.
 
 ```powershell
 $b64 = kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-password}'
@@ -305,7 +305,7 @@ $b64 = kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.a
 Run the end-to-end smoke test against your domain any time:
 
 ```powershell
-.\scripts\smoke-test.ps1 https://railshack.prod-bat.site
+.\scripts\smoke-test.ps1 https://sudalops.shop
 ```
 
 Prometheus stays private on purpose (it has no login). We query it from Grafana's **Explore** page.
